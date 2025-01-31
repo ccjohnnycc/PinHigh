@@ -138,10 +138,13 @@ const ScorecardModal = ({ visible, players, setPlayers, onClose, onSave }: any) 
         }
 
         const scorecardData = {
-            player: players[0].name,  // Get the first player's name
-            scores: players[0].scores, // Get scores
-            data: new Date().toISOString().split("T")[0], // Save current date
-            course: courseName, // Save course name
+            // Get the first player's name
+            player: players[0].name,
+            // Get scores
+            scores: players[0].scores,
+            // Save current date
+            data: new Date().toISOString().split("T")[0],
+            course: courseName,
         };
 
         await saveScorecard(userId, scorecardData);
@@ -272,9 +275,10 @@ export default function MapScreen() {
     useEffect(() => {
         const fetchClubs = async () => {
             const userId = auth.currentUser?.uid;
-            if (!userId) return; // Use defaults if unauthenticated
+            if (!userId) return;
 
-            const userClubs: Club[] = await getClubsAndDistances(userId); // Fetch from Firebase
+            // Fetch from Firebase
+            const userClubs: Club[] = await getClubsAndDistances(userId);
 
             // Merge user clubs with default clubs without duplicates
             const mergedClubs = [...DEFAULT_CLUBS, ...userClubs].reduce<Club[]>((acc, club) => {
@@ -430,22 +434,24 @@ const styles = StyleSheet.create({
     holesRow: {
         flexDirection: "row",
     },
+    // Match width of scoreInput
     holeHeader: {
-        width: 35, // Match width of scoreInput
+        width: 35,
         textAlign: "center",
         fontWeight: "bold",
     },
     scoreRow: {
         flexDirection: "row",
     },
+    
     scoreInput: {
-        width: 35,  // Make sure this width matches holeHeader width
+        width: 35,
         textAlign: "center",
-        borderWidth: 1,  // Full border instead of just bottom
+        borderWidth: 1,
         borderColor: "black",
         borderRadius: 5,
         marginTop: 2,
-        paddingVertical: 5, // Add padding for better spacing
+        paddingVertical: 5,
     },
     totalText: {
         fontWeight: "bold",
