@@ -28,7 +28,7 @@ const SignInScreen: React.FC = () => {
       setError(err.message);
     }
   };
-
+  
   return (
     <View style={styles.container}>
       <TextInput

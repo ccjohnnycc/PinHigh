@@ -18,10 +18,34 @@ import * as Location from "expo-location";
 import haversine from "haversine";
 import { saveClubAndDistance, getClubsAndDistances, suggestClub, saveScorecard } from "./firebaseUtils";
 import { auth } from "./firebaseConfig";
+import { useRoute, RouteProp } from '@react-navigation/native';
 
 type Club = {
     club: string;
     distance: number;
+};
+
+type RouteParams = {
+    course: Course;
+    selectedTee: string;
+  };
+  
+  type Course = {
+    course_name: string;
+    tees: {
+      [teeName: string]: HoleData[];
+    };
+    location: {
+      latitude: number;
+      longitude: number;
+    };
+  };
+
+type HoleData = {
+    hole_number: number;
+    distance: number;
+    par: number;
+    handicap: number;
 };
 
 // Default clubs
@@ -84,7 +108,7 @@ const TrackShotModal = ({ visible, distance, onClose }: any) => {
 // Scorecard Modal Component
 const ScorecardModal = ({ visible, players, setPlayers, onClose, onSave }: any) => {
     const [courseName, setCourseName] = useState("");
-    
+
     const updateScore = (playerIndex: number, holeIndex: number, value: string) => {
         const updatedPlayers = [...players];
         updatedPlayers[playerIndex].scores[holeIndex] = value;
@@ -246,8 +270,10 @@ const ScorecardModal = ({ visible, players, setPlayers, onClose, onSave }: any) 
     );
 };
 
-// Main Map Screen
+// =========================Main Map Screen=========================
 export default function MapScreen() {
+    const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
+    const { course, selectedTee } = route.params;
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [selectedPoint, setSelectedPoint] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -256,6 +282,19 @@ export default function MapScreen() {
     const [players, setPlayers] = useState([{ name: "Player 1", scores: Array(18).fill("") }]);
     // For club suggestions
     const [clubs, setClubs] = useState<Club[]>(DEFAULT_CLUBS);
+
+    // Extract the holes data for the selected tee
+    const holes: HoleData[] = course.tees[selectedTee] || [];
+    const [currentHoleIndex, setCurrentHoleIndex] = useState(0);
+    const currentHole = holes[currentHoleIndex];
+
+    const handleNextHole = () => {
+        if (currentHoleIndex < holes.length - 1) {
+            setCurrentHoleIndex(currentHoleIndex + 1);
+        } else {
+            Alert.alert('You have reached the last hole.');
+        }
+    };
 
     const fetchLocation = useCallback(async () => {
         try {
@@ -316,6 +355,21 @@ export default function MapScreen() {
                 <ActivityIndicator size="large" />
             ) : (
                 <>
+                    {/* Header for hole information */}
+                    <View style={styles.headerContainer}>
+                        <Text style={styles.headerText}>Course: {course.course_name}</Text>
+                        <Text style={styles.headerText}>Tee: {selectedTee}</Text>
+                        {currentHole ? (
+                            <>
+                                <Text style={styles.headerText}>Hole: {currentHole.hole_number}</Text>
+                                <Text style={styles.headerText}>Distance: {currentHole.distance} yards</Text>
+                                <Text style={styles.headerText}>Par: {currentHole.par}</Text>
+                                <Text style={styles.headerText}>Handicap: {currentHole.handicap}</Text>
+                            </>
+                        ) : (
+                            <Text style={styles.headerText}>No hole data available</Text>
+                        )}
+                    </View>
                     <MapView
                         style={styles.map}
                         mapType="satellite"
@@ -338,12 +392,17 @@ export default function MapScreen() {
                             <Marker coordinate={selectedPoint} title="Selected Point" />
                         )}
                     </MapView>
+                    {/* Display distance info */}
                     <View style={styles.infoBox}>
                         <Text>Distance: {getDistance()} yards</Text>
                         {getDistance() && clubs.length > 0 && (
                             <Text>Suggested Club: {suggestClub(parseFloat(getDistance() || "0"), clubs)}</Text>
                         )}
                     </View>
+                    {/* Next Hole button */}
+                    <TouchableOpacity style={styles.nextHoleButton} onPress={handleNextHole}>
+                        <Text style={styles.buttonText}>Next Hole</Text>
+                    </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.floatingButton}
@@ -443,7 +502,7 @@ const styles = StyleSheet.create({
     scoreRow: {
         flexDirection: "row",
     },
-    
+
     scoreInput: {
         width: 35,
         textAlign: "center",
@@ -507,5 +566,25 @@ const styles = StyleSheet.create({
         alignItems: "center",
         backgroundColor: "rgb(255, 255, 255)",
         padding: 20,
+    },
+    // header information from searched course
+    headerContainer: {
+        backgroundColor: '#f0f0f0',
+        padding: 10,
+        borderBottomWidth: 1,
+        borderColor: '#ccc',
+    },
+    headerText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 5,
+    },
+    nextHoleButton: {
+        position: 'absolute',
+        bottom: 120,
+        left: 10,
+        backgroundColor: 'orange',
+        padding: 10,
+        borderRadius: 5,
     },
 });
