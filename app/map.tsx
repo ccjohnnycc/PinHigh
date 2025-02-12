@@ -25,11 +25,12 @@ type Club = {
     distance: number;
 };
 
-type RouteParams = {
-    course: Course;
-    selectedTee: string;
-  };
-  
+type RootStackParamList = {
+    CourseSearch: undefined;
+    TeeSelectionScreen: { course: Course };
+    map: { course: Course; selectedTee: string; holes: HoleData[] };
+};
+
   type Course = {
     course_name: string;
     tees: {
@@ -272,8 +273,10 @@ const ScorecardModal = ({ visible, players, setPlayers, onClose, onSave }: any) 
 
 // =========================Main Map Screen=========================
 export default function MapScreen() {
-    const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
-    const { course, selectedTee } = route.params;
+    //const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
+    const route = useRoute<RouteProp<RootStackParamList, 'map'>>();
+    //const { course, selectedTee } = route.params;
+    const { course, selectedTee, holes } = route.params;
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [selectedPoint, setSelectedPoint] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -284,7 +287,7 @@ export default function MapScreen() {
     const [clubs, setClubs] = useState<Club[]>(DEFAULT_CLUBS);
 
     // Extract the holes data for the selected tee
-    const holes: HoleData[] = course.tees[selectedTee] || [];
+    //const holes: HoleData[] = course.tees[selectedTee] || [];
     const [currentHoleIndex, setCurrentHoleIndex] = useState(0);
     const currentHole = holes[currentHoleIndex];
 
