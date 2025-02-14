@@ -12,6 +12,8 @@ import {
     Alert,
     KeyboardAvoidingView,
     Platform,
+    Image,
+    Animated,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
@@ -19,6 +21,9 @@ import haversine from "haversine";
 import { saveClubAndDistance, getClubsAndDistances, suggestClub, saveScorecard } from "./firebaseUtils";
 import { auth } from "./firebaseConfig";
 import { useRoute, RouteProp } from '@react-navigation/native';
+import axios from 'axios';
+import arrowImg from "../assets/images/arrow.png";
+
 
 type Club = {
     club: string;
@@ -31,16 +36,16 @@ type RootStackParamList = {
     map: { course: Course; selectedTee: string; holes: HoleData[] };
 };
 
-  type Course = {
+type Course = {
     course_name: string;
     tees: {
-      [teeName: string]: HoleData[];
+        [teeName: string]: HoleData[];
     };
     location: {
-      latitude: number;
-      longitude: number;
+        latitude: number;
+        longitude: number;
     };
-  };
+};
 
 type HoleData = {
     hole_number: number;
@@ -48,6 +53,11 @@ type HoleData = {
     par: number;
     handicap: number;
 };
+
+// weather API Key and URL
+const OPENWEATHER_API_KEY = "b508f10805c3cc6983c16fbae45c51e6";
+const OPENWEATHER_URL = "https://api.openweathermap.org/data/2.5/weather";
+
 
 // Default clubs
 const DEFAULT_CLUBS: Club[] = [
@@ -273,11 +283,11 @@ const ScorecardModal = ({ visible, players, setPlayers, onClose, onSave }: any) 
 
 // =========================Main Map Screen=========================
 export default function MapScreen() {
-    //const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
     const route = useRoute<RouteProp<RootStackParamList, 'map'>>();
-    //const { course, selectedTee } = route.params;
     const { course, selectedTee, holes } = route.params;
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
+    const [windSpeed, setWindSpeed] = useState<number | null>(null);
+    const [windDirection, setWindDirection] = useState<number | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [selectedPoint, setSelectedPoint] = useState<{ latitude: number; longitude: number } | null>(null);
     const [isTrackShotVisible, setIsTrackShotVisible] = useState(false);
@@ -313,7 +323,7 @@ export default function MapScreen() {
         }
     }, []);
 
-    // Fetch and merge clubs
+    // pull users saved clubs and merge clubs
     useEffect(() => {
         const fetchClubs = async () => {
             const userId = auth.currentUser?.uid;
@@ -351,6 +361,33 @@ export default function MapScreen() {
     useEffect(() => {
         fetchLocation();
     }, [fetchLocation]);
+
+    // pull weather details from api
+    useEffect(() => {
+        if (!location) return;
+
+        const fetchWeather = async () => {
+            try {
+                const { latitude, longitude } = location.coords;
+                const response = await axios.get(OPENWEATHER_URL, {
+                    params: {
+                        lat: latitude,
+                        lon: longitude,
+                        appid: OPENWEATHER_API_KEY,
+                        units: "imperial",
+                    },
+                });
+
+                const windData = response.data.wind;
+                setWindSpeed(Math.round(windData.speed));
+                setWindDirection(windData.deg);
+            } catch (error) {
+                console.error("Failed to fetch wind data:", error);
+            }
+        };
+
+        fetchWeather();
+    }, [location]);
 
     return (
         <View style={styles.container}>
@@ -395,12 +432,17 @@ export default function MapScreen() {
                             <Marker coordinate={selectedPoint} title="Selected Point" />
                         )}
                     </MapView>
-                    {/* Display distance info */}
-                    <View style={styles.infoBox}>
-                        <Text>Distance: {getDistance()} yards</Text>
-                        {getDistance() && clubs.length > 0 && (
-                            <Text>Suggested Club: {suggestClub(parseFloat(getDistance() || "0"), clubs)}</Text>
-                        )}
+                    {/* wind */}
+                    <View style={styles.weatherBox}>
+                        <Text style={styles.weatherText}>Wind: {windSpeed} mph</Text>
+
+                        <Animated.View style={{ transform: [{ rotate: `${windDirection}deg` }] }}>
+                            <Image
+                                source={arrowImg}
+                                style={{ width: 30, height: 30 }}
+                                resizeMode="contain"
+                            />
+                        </Animated.View>
                     </View>
                     {/* Next Hole button */}
                     <TouchableOpacity style={styles.nextHoleButton} onPress={handleNextHole}>
@@ -430,6 +472,7 @@ export default function MapScreen() {
                         setPlayers={setPlayers}
                         onClose={() => setIsScorecardVisible(false)}
                     />
+                    {/* Distance/ club suggestion */}
                     {selectedPoint && (
                         <View style={styles.infoBox}>
                             <Text> Distance: {getDistance()} yards </Text>
@@ -445,6 +488,7 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
+    /** === MODALS (Track Shot & Scorecard) === **/
     modalOverlay: {
         flex: 1,
         justifyContent: "center",
@@ -460,17 +504,17 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 22,
         fontWeight: "bold",
-        marginLeft: 10,
-        marginTop: 15,
-        marginBottom: 0,
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: "bold",
-        marginTop: 10,
         marginBottom: 5,
     },
-    //player username
+    modalContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "rgb(255, 255, 255)",
+        padding: 20,
+    },
+
+    /** === TEXT INPUTS & LABELS === **/
     input: {
         borderWidth: 1,
         borderColor: "black",
@@ -479,6 +523,14 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         width: "100%",
     },
+    label: {
+        fontSize: 16,
+        fontWeight: "bold",
+        marginTop: 10,
+        marginBottom: 5,
+    },
+
+    /** === SCORECARD STYLING === **/
     playerRow: {
         flexDirection: "row",
         alignItems: "center",
@@ -493,19 +545,11 @@ const styles = StyleSheet.create({
         alignItems: "center",
         marginHorizontal: 5,
     },
-    holesRow: {
-        flexDirection: "row",
-    },
-    // Match width of scoreInput
     holeHeader: {
         width: 35,
         textAlign: "center",
         fontWeight: "bold",
     },
-    scoreRow: {
-        flexDirection: "row",
-    },
-
     scoreInput: {
         width: 35,
         textAlign: "center",
@@ -519,6 +563,33 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         marginTop: 10,
     },
+
+    /** === BUTTONS === **/
+    floatingButton: {
+        position: "absolute",
+        bottom: 20,
+        right: 20,
+        backgroundColor: "blue",
+        padding: 10,
+        borderRadius: 5,
+    },
+    nextHoleButton: {
+        position: "absolute",
+        bottom: 120,
+        left: 10,
+        backgroundColor: "orange",
+        padding: 10,
+        borderRadius: 5,
+    },
+    buttonText: {
+        color: "white",
+        fontWeight: "bold",
+    },
+    buttonRow: {
+        marginTop: 20,
+        justifyContent: "center",
+        alignItems: "center",
+    },
     removeButton: {
         backgroundColor: "red",
         padding: 5,
@@ -529,51 +600,49 @@ const styles = StyleSheet.create({
         color: "white",
         fontWeight: "bold",
     },
-    //scorecard buttons
-    buttonRow: {
-        marginTop: 20,
-        justifyContent: "center",
-        alignItems: "center",
-    },
+
+    /** === MAP & INFO DISPLAYS === **/
     container: {
         flex: 1,
     },
     map: {
         flex: 1,
     },
-    //distance box
-    infoBox: {
+
+    /** === INFO BOXES (Distance & Wind) === **/
+    infoContainer: {
         position: "absolute",
         bottom: 35,
+        left: 10,
+        right: 10,
+        backgroundColor: "white",
+        padding: 10,
+        borderRadius: 5,
+        elevation: 3,
+    },
+    infoBox: {
+        position: "absolute",
+        bottom: 100, // Adjust to avoid overlap
         left: 10,
         backgroundColor: "white",
         padding: 10,
         borderRadius: 5,
+        elevation: 3,
     },
-    // track shot button
-    floatingButton: {
-        position: "absolute",
-        bottom: 20,
-        right: 20,
-        backgroundColor: "blue",
-        padding: 10,
-        borderRadius: 5,
-    },
-    buttonText: {
-        color: "white",
+    infoText: {
+        fontSize: 16,
         fontWeight: "bold",
     },
-    modalContainer: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "rgb(255, 255, 255)",
-        padding: 20,
-    },
-    // header information from searched course
+
+    /** === HEADER INFO (Course details) === **/
     headerContainer: {
+        position: "absolute",
+        top: 20,
+        left: 10,
+        right: 10,
         backgroundColor: '#f0f0f0',
         padding: 10,
+        borderRadius: 5,
         borderBottomWidth: 1,
         borderColor: '#ccc',
     },
@@ -582,12 +651,19 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 5,
     },
-    nextHoleButton: {
-        position: 'absolute',
-        bottom: 120,
+
+    /** === WEATHER BOX === **/
+    weatherBox: {
+        position: "absolute",
+        top: 90,
         left: 10,
-        backgroundColor: 'orange',
+        backgroundColor: "white",
         padding: 10,
         borderRadius: 5,
+        elevation: 3,
+    },
+    weatherText: {
+        fontSize: 16,
+        fontWeight: "bold",
     },
 });
