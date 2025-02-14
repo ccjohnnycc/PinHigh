@@ -58,7 +58,7 @@ export default function TeeSelectionScreen() {
     // Log the course data to the console (debugging)
     //console.log("Course data received in TeeSelectionScreen:", course);
 
-    console.log("Full Course Data:", JSON.stringify(course, null, 2));
+    //console.log("Full Course Data:", JSON.stringify(course, null, 2));
 
 
     // Default to "male" tees
