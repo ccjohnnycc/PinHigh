@@ -58,6 +58,19 @@ type HoleData = {
 const OPENWEATHER_API_KEY = "b508f10805c3cc6983c16fbae45c51e6";
 const OPENWEATHER_URL = "https://api.openweathermap.org/data/2.5/weather";
 
+// converting weather degrees to compass direction
+const getCardinalDirection = (degrees: number) => {
+    if (degrees >= 337.5 || degrees < 22.5) return "N";
+    if (degrees >= 22.5 && degrees < 67.5) return "NE";
+    if (degrees >= 67.5 && degrees < 112.5) return "E";
+    if (degrees >= 112.5 && degrees < 157.5) return "SE";
+    if (degrees >= 157.5 && degrees < 202.5) return "S";
+    if (degrees >= 202.5 && degrees < 247.5) return "SW";
+    if (degrees >= 247.5 && degrees < 292.5) return "W";
+    if (degrees >= 292.5 && degrees < 337.5) return "NW";
+    // Default if no valid direction found
+    return "--";
+};
 
 // Default clubs
 const DEFAULT_CLUBS: Club[] = [
@@ -308,6 +321,13 @@ export default function MapScreen() {
             Alert.alert('You have reached the last hole.');
         }
     };
+    const handlePrevHole = () => {
+        if (currentHoleIndex > 0) {
+            setCurrentHoleIndex(currentHoleIndex - 1);
+        } else {
+            Alert.alert('You are on the first hole.');
+        }
+    };
 
     const fetchLocation = useCallback(async () => {
         try {
@@ -434,19 +454,20 @@ export default function MapScreen() {
                     </MapView>
                     {/* wind */}
                     <View style={styles.weatherBox}>
-                        <Text style={styles.weatherText}>Wind: {windSpeed} mph</Text>
-
-                        <Animated.View style={{ transform: [{ rotate: `${windDirection}deg` }] }}>
-                            <Image
-                                source={arrowImg}
-                                style={{ width: 30, height: 30 }}
-                                resizeMode="contain"
-                            />
-                        </Animated.View>
+                        <Text style={styles.weatherText}>
+                            Wind: {windSpeed !== null ? `${windSpeed} mph` : "--"}
+                        </Text>
+                        <Text style={styles.weatherText}>
+                            Direction: {windDirection !== null ? getCardinalDirection(windDirection) : "--"}
+                        </Text>
                     </View>
                     {/* Next Hole button */}
                     <TouchableOpacity style={styles.nextHoleButton} onPress={handleNextHole}>
                         <Text style={styles.buttonText}>Next Hole</Text>
+                    </TouchableOpacity>
+                    {/* Prev Hole button */}
+                    <TouchableOpacity style={styles.prevHoleButton} onPress={handlePrevHole}>
+                        <Text style={styles.buttonText}>Prev Hole</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -577,6 +598,14 @@ const styles = StyleSheet.create({
         position: "absolute",
         bottom: 120,
         left: 10,
+        backgroundColor: "green",
+        padding: 10,
+        borderRadius: 5,
+    },
+    prevHoleButton: {
+        position: "absolute",
+        bottom: 175,
+        left: 10,
         backgroundColor: "orange",
         padding: 10,
         borderRadius: 5,
@@ -609,7 +638,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 
-    /** === INFO BOXES (Distance & Wind) === **/
+    /** INFO BOXES Distance **/
     infoContainer: {
         position: "absolute",
         bottom: 35,
@@ -622,7 +651,7 @@ const styles = StyleSheet.create({
     },
     infoBox: {
         position: "absolute",
-        bottom: 100, // Adjust to avoid overlap
+        bottom: 35,
         left: 10,
         backgroundColor: "white",
         padding: 10,
@@ -655,8 +684,8 @@ const styles = StyleSheet.create({
     /** === WEATHER BOX === **/
     weatherBox: {
         position: "absolute",
-        top: 90,
-        left: 10,
+        top: 375,
+        right: 10,
         backgroundColor: "white",
         padding: 10,
         borderRadius: 5,
