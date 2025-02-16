@@ -417,11 +417,10 @@ export default function MapScreen() {
                 <>
                     {/* Header for hole information */}
                     <View style={styles.headerContainer}>
-                        <Text style={styles.headerText}>Course: {course.course_name}</Text>
                         <Text style={styles.headerText}>Tee: {selectedTee}</Text>
                         {currentHole ? (
                             <>
-                                <Text style={styles.headerText}>Hole: {currentHole.hole_number}</Text>
+                                <Text style={styles.headerText}>Hole: #{currentHole.hole_number}</Text>
                                 <Text style={styles.headerText}>Distance: {currentHole.distance} yards</Text>
                                 <Text style={styles.headerText}>Par: {currentHole.par}</Text>
                                 <Text style={styles.headerText}>Handicap: {currentHole.handicap}</Text>
@@ -496,10 +495,10 @@ export default function MapScreen() {
                     {/* Distance/ club suggestion */}
                     {selectedPoint && (
                         <View style={styles.infoBox}>
-                            <Text> Distance: {getDistance()} yards </Text>
+                            <Text style={styles.infoText}> Distance: {getDistance()} yards </Text>
                             {getDistance() &&
                                 clubs.length > 0 &&
-                                <Text> Suggested Club: {suggestClub(parseFloat(getDistance() || "0"), clubs)} </Text>}
+                                <Text style={styles.infoText}> Suggested Club: {suggestClub(parseFloat(getDistance() || "0"), clubs)} </Text>}
                         </View>
                     )}
                 </>
@@ -674,6 +673,8 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         borderBottomWidth: 1,
         borderColor: '#ccc',
+        // render last
+        zIndex: 100,
     },
     headerText: {
         fontSize: 18,
