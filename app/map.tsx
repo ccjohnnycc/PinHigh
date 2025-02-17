@@ -58,6 +58,10 @@ type HoleData = {
 const OPENWEATHER_API_KEY = "b508f10805c3cc6983c16fbae45c51e6";
 const OPENWEATHER_URL = "https://api.openweathermap.org/data/2.5/weather";
 
+// google elevation API kuye and URL
+const GOOGLE_ELEVATION_API_KEY = "AIzaSyCvRJfjHDq3GKfksif-NoclJdvQT4ILjuU"; // Replace with your API key
+const GOOGLE_ELEVATION_URL = "https://maps.googleapis.com/maps/api/elevation/json";
+
 // converting weather degrees to compass direction
 const getCardinalDirection = (degrees: number) => {
     if (degrees >= 337.5 || degrees < 22.5) return "N";
@@ -87,6 +91,29 @@ const DEFAULT_CLUBS: Club[] = [
     { club: "SW", distance: 110 },
     { club: "Putter", distance: 5 },
 ];
+
+//using elevation API to get elevation
+const getElevation = async (latitude: number, longitude: number): Promise<number | null> => {
+    try {
+        const response = await axios.get(GOOGLE_ELEVATION_URL, {
+            params: {
+                locations: `${latitude},${longitude}`,
+                key: GOOGLE_ELEVATION_API_KEY,
+            },
+        });
+
+        if (response.data.results.length > 0) {
+            return response.data.results[0].elevation;
+        } else {
+            console.error("No elevation data found.");
+            return null;
+        }
+    } catch (error) {
+        console.error("Failed to fetch elevation data:", error);
+        return null;
+    }
+};
+
 
 // Track Shot Modal Component
 const TrackShotModal = ({ visible, distance, onClose }: any) => {
@@ -306,6 +333,9 @@ export default function MapScreen() {
     const [isTrackShotVisible, setIsTrackShotVisible] = useState(false);
     const [isScorecardVisible, setIsScorecardVisible] = useState(false);
     const [players, setPlayers] = useState([{ name: "Player 1", scores: Array(18).fill("") }]);
+    const [userElevation, setUserElevation] = useState<number | null>(null);
+    const [markedElevation, setMarkedElevation] = useState<number | null>(null);
+
     // For club suggestions
     const [clubs, setClubs] = useState<Club[]>(DEFAULT_CLUBS);
 
@@ -338,6 +368,11 @@ export default function MapScreen() {
             }
             const currentLocation = await Location.getCurrentPositionAsync({});
             setLocation(currentLocation);
+
+            // Fetch user elevation
+            const elevation = await getElevation(currentLocation.coords.latitude, currentLocation.coords.longitude);
+            if (elevation !== null) setUserElevation(elevation);
+
         } catch (error) {
             setErrorMsg("An error occurred while fetching the location");
         }
@@ -409,6 +444,19 @@ export default function MapScreen() {
         fetchWeather();
     }, [location]);
 
+    //user target marker
+    const handleMapPress = async (e: any) => {
+        const newPoint = e.nativeEvent.coordinate;
+        setSelectedPoint(newPoint);
+
+        // Get elevation for selected point
+        const elevation = await getElevation(newPoint.latitude, newPoint.longitude);
+        if (elevation !== null) setMarkedElevation(elevation);
+    };
+
+
+    //
+
     return (
         <View style={styles.container}>
             {!location ? (
@@ -429,6 +477,7 @@ export default function MapScreen() {
                             <Text style={styles.headerText}>No hole data available</Text>
                         )}
                     </View>
+                    {/* Map view and user marker */}
                     <MapView
                         style={styles.map}
                         mapType="satellite"
@@ -438,7 +487,7 @@ export default function MapScreen() {
                             latitudeDelta: 0.0015,
                             longitudeDelta: 0.0015,
                         }}
-                        onPress={(e) => setSelectedPoint(e.nativeEvent.coordinate)}
+                        onPress={handleMapPress}
                     >
                         <Marker
                             coordinate={{
@@ -459,6 +508,29 @@ export default function MapScreen() {
                         <Text style={styles.weatherText}>
                             Direction: {windDirection !== null ? getCardinalDirection(windDirection) : "--"}
                         </Text>
+                    </View>
+                    {/* Distance/ club suggestion */}
+                    {selectedPoint && (
+                        <View style={styles.infoBox}>
+                            <Text style={styles.infoText}> Distance: {getDistance()} yards </Text>
+                            {getDistance() &&
+                                clubs.length > 0 &&
+                                <Text style={styles.infoText}> Club: {suggestClub(parseFloat(getDistance()
+                                    || "0"), clubs)} </Text>}
+                        </View>
+                    )}
+                    {/* Elevation */}
+                    <View style={styles.elevationBox}>
+                        {userElevation !== null && markedElevation !== null ? (
+                            <>
+                                <Text style={styles.elevationText}>
+                                    {Math.round((markedElevation - userElevation) * 3.28084)} ft
+                                    {markedElevation > userElevation ? "⬆️" : "⬇️"}
+                                </Text>
+                            </>
+                        ) : (
+                            <Text style={styles.elevationText}>Elevation: -- ft</Text>
+                        )}
                     </View>
                     {/* Next Hole button */}
                     <TouchableOpacity style={styles.nextHoleButton} onPress={handleNextHole}>
@@ -492,15 +564,7 @@ export default function MapScreen() {
                         setPlayers={setPlayers}
                         onClose={() => setIsScorecardVisible(false)}
                     />
-                    {/* Distance/ club suggestion */}
-                    {selectedPoint && (
-                        <View style={styles.infoBox}>
-                            <Text style={styles.infoText}> Distance: {getDistance()} yards </Text>
-                            {getDistance() &&
-                                clubs.length > 0 &&
-                                <Text style={styles.infoText}> Suggested Club: {suggestClub(parseFloat(getDistance() || "0"), clubs)} </Text>}
-                        </View>
-                    )}
+
                 </>
             )}
         </View>
@@ -665,9 +729,8 @@ const styles = StyleSheet.create({
     /** === HEADER INFO (Course details) === **/
     headerContainer: {
         position: "absolute",
-        top: 20,
+        top: 10,
         left: 10,
-        right: 10,
         backgroundColor: '#f0f0f0',
         padding: 10,
         borderRadius: 5,
@@ -685,7 +748,7 @@ const styles = StyleSheet.create({
     /** === WEATHER BOX === **/
     weatherBox: {
         position: "absolute",
-        top: 375,
+        top: 10,
         right: 10,
         backgroundColor: "white",
         padding: 10,
@@ -696,4 +759,19 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "bold",
     },
+    /** === Elevation Box/ text === **/
+    elevationBox: {
+        position: "absolute",
+        top: 95,
+        right: 10,
+        backgroundColor: "white",
+        padding: 10,
+        borderRadius: 5,
+        elevation: 3,
+    },
+    elevationText: {
+        fontSize: 16,
+        fontWeight: "bold",
+    },
+
 });
