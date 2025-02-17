@@ -359,23 +359,39 @@ export default function MapScreen() {
         }
     };
 
-    const fetchLocation = useCallback(async () => {
+    const startLocationUpdates = async () => {
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== "granted") {
                 setErrorMsg("This app requires location permissions to function.");
                 return;
             }
-            const currentLocation = await Location.getCurrentPositionAsync({});
-            setLocation(currentLocation);
-
-            // Fetch user elevation
-            const elevation = await getElevation(currentLocation.coords.latitude, currentLocation.coords.longitude);
-            if (elevation !== null) setUserElevation(elevation);
-
+    
+            // Set up a real-time location watcher
+            await Location.watchPositionAsync(
+                {
+                    accuracy: Location.Accuracy.High,
+                    // Update every 5 seconds
+                    timeInterval: 5000,
+                    // Update if moved at least 5 yards
+                    distanceInterval: 5 * 1.09361,
+                },
+                async (newLocation) => {
+                    setLocation(newLocation);
+    
+                    // Update user elevation
+                    const elevation = await getElevation(newLocation.coords.latitude, newLocation.coords.longitude);
+                    if (elevation !== null) setUserElevation(elevation);
+                }
+            );
         } catch (error) {
             setErrorMsg("An error occurred while fetching the location");
         }
+    };
+    
+    // Start tracking when the component mounts
+    useEffect(() => {
+        startLocationUpdates();
     }, []);
 
     // pull users saved clubs and merge clubs
@@ -412,10 +428,6 @@ export default function MapScreen() {
         const distanceInMeters = haversine(start, end, { unit: "meter" });
         return (distanceInMeters * 1.09361).toFixed(2);
     };
-
-    useEffect(() => {
-        fetchLocation();
-    }, [fetchLocation]);
 
     // pull weather details from api
     useEffect(() => {
