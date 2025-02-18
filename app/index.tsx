@@ -1,14 +1,17 @@
-import { View, Text, Button, StyleSheet } from "react-native";
-import React from "react";
+import { View, Text, Button, StyleSheet, Switch } from "react-native";
+import React, { useState } from "react";
 import { useNavigation } from 'expo-router';
 import { NavigationProp } from '@react-navigation/native';
 import { auth } from './firebaseConfig';
 
 export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp<any>>();
-
   // Determine if the user is signed in
   const isSignedIn = !!auth.currentUser;
+
+  // Dev Mode State
+  const [devMode, setDevMode] = useState(false);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>PinHigh</Text>
@@ -22,6 +25,17 @@ export default function HomeScreen() {
       ) : (
         <Button title="Sign-In/Sign-Up" onPress={() => navigation.navigate('SignInScreen')} />
       )}
+      {/* Dev Mode Toggle */}
+      <View style={styles.devModeContainer}>
+        <Text style={styles.devModeText}>Dev Mode</Text>
+        <Switch value={devMode} onValueChange={setDevMode} />
+      </View>
+
+      {/* Go to Map */}
+      <Button 
+        title="Go to Map" 
+        onPress={() => navigation.navigate('map', { devMode })}
+      />
     </View>
   );
 }
@@ -41,5 +55,14 @@ const styles = StyleSheet.create({
   button: {
     marginVertical: 10,
     //marginBottom: 10,
+  },
+  devModeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  devModeText: {
+    fontSize: 18,
+    marginRight: 10,
   },
 });
