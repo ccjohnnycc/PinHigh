@@ -24,16 +24,18 @@ import { useRoute, RouteProp } from '@react-navigation/native';
 import axios from 'axios';
 import arrowImg from "../assets/images/arrow.png";
 
+type RootStackParamList = {
+    CourseSearch: undefined;
+    TeeSelectionScreen: { course: Course };
+    map: {
+        course?: Course; selectedTee?: string;
+        holes?: HoleData[]; devMode?: boolean
+    };
+};
 
 type Club = {
     club: string;
     distance: number;
-};
-
-type RootStackParamList = {
-    CourseSearch: undefined;
-    TeeSelectionScreen: { course: Course };
-    map: { course: Course; selectedTee: string; holes: HoleData[] };
 };
 
 type Course = {
@@ -52,6 +54,21 @@ type HoleData = {
     distance: number;
     par: number;
     handicap: number;
+};
+
+// example data for dev mode
+// rio pinar, orlando fl
+const DEV_MODE_LOCATION = {
+    latitude: 28.5257,
+    longitude: -81.2644,
+};
+
+const DEV_MODE_HOLE = {
+    tee: "BLUE",
+    hole_number: 1,
+    distance: 520,
+    par: 5,
+    handicap: 1,
 };
 
 // weather API Key and URL
@@ -324,7 +341,7 @@ const ScorecardModal = ({ visible, players, setPlayers, onClose, onSave }: any) 
 // =========================Main Map Screen=========================
 export default function MapScreen() {
     const route = useRoute<RouteProp<RootStackParamList, 'map'>>();
-    const { course, selectedTee, holes } = route.params;
+    const { devMode, course = null, selectedTee = "", holes = [] } = route.params || {};
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [windSpeed, setWindSpeed] = useState<number | null>(null);
     const [windDirection, setWindDirection] = useState<number | null>(null);
@@ -359,40 +376,74 @@ export default function MapScreen() {
         }
     };
 
-    const startLocationUpdates = async () => {
-        try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== "granted") {
-                setErrorMsg("This app requires location permissions to function.");
-                return;
-            }
-    
-            // Set up a real-time location watcher
-            await Location.watchPositionAsync(
-                {
-                    accuracy: Location.Accuracy.High,
-                    // Update every 5 seconds
-                    timeInterval: 5000,
-                    // Update if moved at least 5 yards
-                    distanceInterval: 5 * 1.09361,
-                },
-                async (newLocation) => {
-                    setLocation(newLocation);
-    
-                    // Update user elevation
-                    const elevation = await getElevation(newLocation.coords.latitude, newLocation.coords.longitude);
-                    if (elevation !== null) setUserElevation(elevation);
-                }
-            );
-        } catch (error) {
-            setErrorMsg("An error occurred while fetching the location");
-        }
-    };
-    
-    // Start tracking when the component mounts
     useEffect(() => {
+        //create variable to store location subscription
+        let locationSubscription: Location.LocationSubscription | null = null;
+        
+        // Fetch location updates
+        const startLocationUpdates = async () => {
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== "granted") {
+                    Alert.alert("Error", "Location permission is required.");
+                    return;
+                }
+
+                // Start watching location updates
+                locationSubscription = await Location.watchPositionAsync(
+                    {
+                        accuracy: Location.Accuracy.High,
+                        // Updates every 5 seconds
+                        timeInterval: 5000,
+                        // Updates every 5 yards moved
+                        distanceInterval: 5,
+                    },
+                    async (newLocation) => {
+                        //if dev mode is enabled, use dev mode location
+                        if (devMode) {
+                            setLocation({
+                                coords: {
+                                    latitude: DEV_MODE_LOCATION.latitude,
+                                    longitude: DEV_MODE_LOCATION.longitude,
+                                    altitude: 0,
+                                    accuracy: 0,
+                                    altitudeAccuracy: 0,
+                                    heading: 0,
+                                    speed: 0,
+                                },
+                                timestamp: Date.now(),
+                            });
+
+                            //grabs elevatoin for dev mode location
+                            const elevation = await getElevation(DEV_MODE_LOCATION.latitude, DEV_MODE_LOCATION.longitude);
+                            if (elevation !== null) setUserElevation(elevation);
+
+                        } else {
+                            //no dev mode, update location 
+                            setLocation(newLocation);
+
+                            // Fetch elevation dynamically
+                            const elevation = await getElevation(newLocation.coords.latitude, newLocation.coords.longitude);
+                            if (elevation !== null) setUserElevation(elevation);
+                        }
+                    }
+                );
+            } catch (error) {
+                Alert.alert("Error", "An error occurred while fetching location updates.");
+            }
+        };
+
+        //start function to get updates
         startLocationUpdates();
-    }, []);
+
+        //cleanup function
+        return () => {
+            if (locationSubscription) {
+                locationSubscription.remove();
+            }
+        };
+        //allows function to run again once dev mode changes
+    }, [devMode]);
 
     // pull users saved clubs and merge clubs
     useEffect(() => {
@@ -475,18 +526,28 @@ export default function MapScreen() {
                 <ActivityIndicator size="large" />
             ) : (
                 <>
-                    {/* Header for hole information */}
+                    {/* Course Info Box - Show either Dev Mode Course or Selected Course */}
                     <View style={styles.headerContainer}>
-                        <Text style={styles.headerText}>Tee: {selectedTee}</Text>
-                        {currentHole ? (
+                        {devMode ? (
                             <>
-                                <Text style={styles.headerText}>Hole: #{currentHole.hole_number}</Text>
-                                <Text style={styles.headerText}>Distance: {currentHole.distance} yards</Text>
-                                <Text style={styles.headerText}>Par: {currentHole.par}</Text>
-                                <Text style={styles.headerText}>Handicap: {currentHole.handicap}</Text>
+                                <Text style={styles.headerText}>Tee: {DEV_MODE_HOLE.tee}</Text>
+                                <Text style={styles.headerText}>Hole: #{DEV_MODE_HOLE.hole_number}</Text>
+                                <Text style={styles.headerText}>Distance: {DEV_MODE_HOLE.distance} yards</Text>
+                                <Text style={styles.headerText}>Par: {DEV_MODE_HOLE.par}</Text>
+                                <Text style={styles.headerText}>Handicap: {DEV_MODE_HOLE.handicap}</Text>
                             </>
                         ) : (
-                            <Text style={styles.headerText}>No hole data available</Text>
+                            course && selectedTee && holes ? (
+                                <>
+                                    <Text style={styles.headerText}>Tee: {selectedTee}</Text>
+                                    <Text style={styles.headerText}>Hole: #{holes[currentHoleIndex]?.hole_number}</Text>
+                                    <Text style={styles.headerText}>Distance: {holes[currentHoleIndex]?.distance} yards</Text>
+                                    <Text style={styles.headerText}>Par: {holes[currentHoleIndex]?.par}</Text>
+                                    <Text style={styles.headerText}>Handicap: {holes[currentHoleIndex]?.handicap}</Text>
+                                </>
+                            ) : (
+                                <Text style={styles.headerText}>No course selected</Text>
+                            )
                         )}
                     </View>
                     {/* Map view and user marker */}
