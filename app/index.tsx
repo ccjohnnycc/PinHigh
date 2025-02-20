@@ -21,7 +21,7 @@ export default function HomeScreen() {
 
       {/* Button for Sign-In/Sign-Up or Profile */}
       {isSignedIn ? (
-        <Button title="Profile" onPress={() => navigation.navigate('Profile')} />
+        <Button title="Profile" onPress={() => navigation.navigate('ProfileScreen')} />
       ) : (
         <Button title="Sign-In/Sign-Up" onPress={() => navigation.navigate('SignInScreen')} />
       )}
