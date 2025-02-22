@@ -1,31 +1,21 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
-    View,
-    Text,
-    StyleSheet,
-    ActivityIndicator,
-    TouchableOpacity,
-    Modal,
-    ScrollView,
-    TextInput,
-    Button,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Image,
-    Animated,
+    View, Text, StyleSheet, ActivityIndicator, TouchableOpacity,
+    Modal, TextInput, Button, Alert,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import haversine from "haversine";
-import { saveClubAndDistance, getClubsAndDistances, suggestClub, saveScorecard } from "./firebaseUtils";
+import { saveClubAndDistance, getClubsAndDistances, suggestClub } from "./firebaseUtils";
 import { auth } from "./firebaseConfig";
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation, NavigationProp } from '@react-navigation/native';
 import axios from 'axios';
-import arrowImg from "../assets/images/arrow.png";
 
 type RootStackParamList = {
-    CourseSearch: undefined;
+    CourseSearchScreen: undefined;
+    ProfileScreen: undefined;
+    ScorecardScreen: undefined;
+    SignInScreen: undefined;
     TeeSelectionScreen: { course: Course };
     map: {
         course?: Course; selectedTee?: string;
@@ -173,183 +163,17 @@ const TrackShotModal = ({ visible, distance, onClose }: any) => {
     );
 };
 
-// Scorecard Modal Component
-const ScorecardModal = ({ visible, players, setPlayers, onClose, onSave }: any) => {
-    const [courseName, setCourseName] = useState("");
-
-    const updateScore = (playerIndex: number, holeIndex: number, value: string) => {
-        const updatedPlayers = [...players];
-        updatedPlayers[playerIndex].scores[holeIndex] = value;
-        setPlayers(updatedPlayers);
-    };
-
-    const addPlayer = () => {
-        setPlayers([
-            ...players,
-            { name: `Player ${players.length + 1}`, scores: Array(18).fill("") },
-        ]);
-    };
-
-    const removePlayer = (index: number) => {
-        setPlayers(players.filter((_: any, i: number) => i !== index));
-    };
-
-    const clearScores = () => {
-        Alert.alert(
-            "Clear Scores",
-            "Are you sure you want to clear all scores?",
-            [
-                {
-                    text: "Cancel",
-                    style: "cancel",
-                },
-                {
-                    text: "Clear",
-                    onPress: () =>
-                        setPlayers(
-                            players.map((player: any) => ({
-                                ...player,
-                                scores: Array(18).fill(""),
-                            }))
-                        ),
-                    style: "destructive",
-                },
-            ]
-        );
-    };
-
-    const handleSaveScorecard = async () => {
-        const userId = auth.currentUser?.uid;
-        if (!userId) {
-            Alert.alert("Error", "You need to be signed in to save data.");
-            return;
-        }
-        if (!courseName.trim()) {
-            Alert.alert("Error", "Please enter a course name.");
-            return;
-        }
-
-        const scorecardData = {
-            // Get the first player's name
-            player: players[0].name,
-            // Get scores
-            scores: players[0].scores,
-            // Save current date
-            data: new Date().toISOString().split("T")[0],
-            course: courseName,
-        };
-
-        await saveScorecard(userId, scorecardData);
-        Alert.alert("Success", "Scorecard saved!");
-
-        // Reset state
-        setCourseName("");
-        onClose();
-    };
-
-    const getTotalScore = (scores: string[]) => {
-        return scores.reduce((total, score) => {
-            const parsedScore = parseInt(score, 10);
-            return total + (isNaN(parsedScore) ? 0 : parsedScore);
-        }, 0);
-    };
-
-    return (
-        <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : undefined}
-                style={styles.modalContainer}
-            >
-                <ScrollView>
-                    <Text style={styles.modalTitle}>Scorecard</Text>
-                    {/* Course Name Input */}
-                    <Text style={styles.label}>Enter Course Name:</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Course Name"
-                        value={courseName}
-                        onChangeText={setCourseName}
-                    />
-                    {/* Player/scores */}
-                    {players.map((player: any, playerIndex: number) => (
-                        <View
-                            key={playerIndex}
-                            style={{
-                                backgroundColor: playerIndex % 2 === 0 ? "#f9f9f9" : "white",
-                                padding: 10,
-                                borderRadius: 5,
-                                marginVertical: 5,
-                            }}
-                        >
-                            <View style={styles.playerRow}>
-                                <TextInput
-                                    style={[styles.input, { flex: 1 }]}
-                                    placeholder="Enter Player Name"
-                                    value={player.name}
-                                    onChangeText={(text) => {
-                                        const updatedPlayers = [...players];
-                                        updatedPlayers[playerIndex].name = text;
-                                        setPlayers(updatedPlayers);
-                                    }}
-                                />
-                                <TouchableOpacity
-                                    style={styles.removeButton}
-                                    onPress={() => removePlayer(playerIndex)}
-                                >
-                                    <Text style={styles.removeButtonText}>Remove</Text>
-                                </TouchableOpacity>
-                            </View>
-                            {/* Combined horizontal scroll for holes and scores */}
-                            <ScrollView horizontal>
-                                <View style={styles.holesAndScoresRow}>
-                                    {Array.from({ length: 18 }, (_, i) => (
-                                        <View key={i} style={styles.holeAndScore}>
-                                            {/* Hole number */}
-                                            <Text style={styles.holeHeader}>{i + 1}</Text>
-                                            {/* Score input box */}
-                                            <TextInput
-                                                style={styles.scoreInput}
-                                                keyboardType="numeric"
-                                                value={player.scores[i]}
-                                                onChangeText={(value) =>
-                                                    updateScore(playerIndex, i, value)
-                                                }
-                                            />
-                                        </View>
-                                    ))}
-                                </View>
-                            </ScrollView>
-                            <Text style={styles.totalText}>
-                                Total Score: {getTotalScore(player.scores)}
-                            </Text>
-                        </View>
-                    ))}
-                    <View style={[styles.buttonRow, { flexDirection: "column" }]}>
-                        <Button title="Add Player" onPress={addPlayer} />
-                        <View style={{ marginVertical: 10 }}>
-                            <Button title="Clear Scores" onPress={clearScores} color="red" />
-                        </View>
-                        <Button title="Save Scorecard" onPress={handleSaveScorecard} />
-                        <Button title="Close" onPress={onClose} />
-                    </View>
-                </ScrollView>
-            </KeyboardAvoidingView>
-        </Modal>
-    );
-};
 
 // =========================Main Map Screen=========================
 export default function MapScreen() {
     const route = useRoute<RouteProp<RootStackParamList, 'map'>>();
+    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
     const { devMode, course = null, selectedTee = "", holes = [] } = route.params || {};
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [windSpeed, setWindSpeed] = useState<number | null>(null);
     const [windDirection, setWindDirection] = useState<number | null>(null);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [selectedPoint, setSelectedPoint] = useState<{ latitude: number; longitude: number } | null>(null);
     const [isTrackShotVisible, setIsTrackShotVisible] = useState(false);
-    const [isScorecardVisible, setIsScorecardVisible] = useState(false);
-    const [players, setPlayers] = useState([{ name: "Player 1", scores: Array(18).fill("") }]);
     const [userElevation, setUserElevation] = useState<number | null>(null);
     const [markedElevation, setMarkedElevation] = useState<number | null>(null);
 
@@ -379,7 +203,7 @@ export default function MapScreen() {
     useEffect(() => {
         //create variable to store location subscription
         let locationSubscription: Location.LocationSubscription | null = null;
-        
+
         // Fetch location updates
         const startLocationUpdates = async () => {
             try {
@@ -579,8 +403,9 @@ export default function MapScreen() {
                             Wind: {windSpeed !== null ? `${windSpeed} mph` : "--"}
                         </Text>
                         <Text style={styles.weatherText}>
-                            Direction: {windDirection !== null ? getCardinalDirection(windDirection) : "--"}
+                            From: {windDirection !== null ? getCardinalDirection(windDirection) : "--"}
                         </Text>
+
                     </View>
                     {/* Distance/ club suggestion */}
                     {selectedPoint && (
@@ -620,24 +445,19 @@ export default function MapScreen() {
                     >
                         <Text style={styles.buttonText}>Track Shot</Text>
                     </TouchableOpacity>
+
                     <TouchableOpacity
                         style={[styles.floatingButton, { bottom: 80 }]}
-                        onPress={() => setIsScorecardVisible(true)}
+                        onPress={() => navigation.navigate('ScorecardScreen')}
                     >
                         <Text style={styles.buttonText}>Scorecard</Text>
                     </TouchableOpacity>
+
                     <TrackShotModal
                         visible={isTrackShotVisible}
                         distance={parseFloat(getDistance() || "0")}
                         onClose={() => setIsTrackShotVisible(false)}
                     />
-                    <ScorecardModal
-                        visible={isScorecardVisible}
-                        players={players}
-                        setPlayers={setPlayers}
-                        onClose={() => setIsScorecardVisible(false)}
-                    />
-
                 </>
             )}
         </View>
@@ -645,7 +465,7 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-    /** === MODALS (Track Shot & Scorecard) === **/
+    /** === modals Track Shot === **/
     modalOverlay: {
         flex: 1,
         justifyContent: "center",
@@ -685,40 +505,6 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         marginTop: 10,
         marginBottom: 5,
-    },
-
-    /** === SCORECARD STYLING === **/
-    playerRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: 10,
-    },
-    holesAndScoresRow: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    holeAndScore: {
-        alignItems: "center",
-        marginHorizontal: 5,
-    },
-    holeHeader: {
-        width: 35,
-        textAlign: "center",
-        fontWeight: "bold",
-    },
-    scoreInput: {
-        width: 35,
-        textAlign: "center",
-        borderWidth: 1,
-        borderColor: "black",
-        borderRadius: 5,
-        marginTop: 2,
-        paddingVertical: 5,
-    },
-    totalText: {
-        fontWeight: "bold",
-        marginTop: 10,
     },
 
     /** === BUTTONS === **/
@@ -846,5 +632,4 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "bold",
     },
-
 });
