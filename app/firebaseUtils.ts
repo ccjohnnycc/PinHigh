@@ -40,7 +40,12 @@ export const getTrackedShots = async (userId: string): Promise<{ id: string; clu
 
     try {
         const querySnapshot = await getDocs(collection(db, `users/${userId}/trackedShots`));
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as { id: string; club: string; distance: number; timestamp: string }));
+        return querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            club: doc.data().club,
+            distance: doc.data().distance,
+            timestamp: doc.data().timestamp,
+        }));
     } catch (error) {
         console.error("Error fetching tracked shots:", error);
         return [];
@@ -167,9 +172,9 @@ export const suggestClub = (distance: number, clubs: { club: string; distance: n
 // save scorecards
 export const saveScorecard = async (
     userId: string,
-    scorecard: { player: string; scores: number[]; data: string; course: string }
+    scorecard: { players: { name: string; scores: number[] }[]; data: string; course: string }
 ): Promise<void> => {
-    if (!userId || !scorecard?.player) throw new Error("Invalid scorecard data");
+    if (!userId || !scorecard?.players?.length) throw new Error("Invalid scorecard data");
 
     try {
         await addDoc(collection(db, `users/${userId}/scorecards`), {
