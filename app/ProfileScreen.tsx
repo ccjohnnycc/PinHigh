@@ -14,15 +14,15 @@ type TrackedShot = {
     club: string;
     distance: number;
     timestamp: string;
-  };
+};
 
-  type Scorecard = {
+type Scorecard = {
     id: string;
     course: string;
     date: string;
     player: string;
     scores: number[];
-  };
+};
 
 export default function ProfileScreen() {
     const [clubs, setClubs] = useState(DEFAULT_CLUBS);
@@ -46,8 +46,51 @@ export default function ProfileScreen() {
             return;
         }
 
-        const userClubs = await getUserClubs(userId);
-        setClubs(userClubs.length > 0 ? userClubs : DEFAULT_CLUBS);
+        try {
+            const userClubs = await getUserClubs(userId);
+            const trackedShots = await getTrackedShots(userId);
+
+            // group tracked shots by club
+            const clubAverages: Record<string, { totalDistance: number; count: number }> = {};
+
+            trackedShots.forEach((shot) => {
+                const clubName = shot.club;
+
+                // Match by first number OR first letter (for wedges)
+                const clubKey = clubName.match(/\d+/)?.[0] ?? clubName.slice(0, 2).toUpperCase();
+
+                if (!clubAverages[clubKey]) {
+                    clubAverages[clubKey] = { totalDistance: 0, count: 0 };
+                }
+
+                clubAverages[clubKey].totalDistance += shot.distance;
+                clubAverages[clubKey].count += 1;
+            });
+
+            // Merge default clubs with user averages
+            const mergedClubs = DEFAULT_CLUBS.map((defaultClub) => {
+                // Extract number from default club 9 from 9I
+                const clubKey = defaultClub.club.match(/\d+/)?.[0] ??
+                    defaultClub.club.slice(0, 2).toUpperCase();
+
+                if (clubKey && clubAverages[clubKey]) {
+                    const { totalDistance, count } = clubAverages[clubKey];
+                    const averageDistance = Math.round(totalDistance / count);
+
+                    // Return merged club with average distance
+                    return { ...defaultClub, distance: averageDistance };
+                }
+
+                // If no tracked shots, keep the default distance
+                return defaultClub;
+            });
+
+            setClubs(mergedClubs);
+        } catch (error) {
+            console.error("Error fetching clubs and tracked shots:", error);
+            // Fallback to default if any error
+            setClubs(DEFAULT_CLUBS);
+        }
     };
 
     // fetch tracked shots
@@ -56,8 +99,12 @@ export default function ProfileScreen() {
             console.error("User not signed in.");
             return;
         }
-        const shots = await getTrackedShots(userId);
-        setTrackedShots(shots);
+        try {
+            const shots = await getTrackedShots(userId);
+            setTrackedShots(shots);
+        } catch (error) {
+            console.error("Error fetching tracked shots:", error);
+        }
     };
 
     // fetch saved scorecards
@@ -136,17 +183,12 @@ export default function ProfileScreen() {
             {/* tracked Shots Section */}
             <Text style={styles.sectionTitle}>Tracked Shots</Text>
             {trackedShots.length > 0 ? (
-                <FlatList
-                    data={trackedShots}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => (
-                        <View style={styles.trackedShotRow}>
-                            <Text>{item.club}: {item.distance} yards </Text>
-                            <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleString()}</Text>
-                            <Button title="Delete" onPress={() => handleDeleteTrackedShot(item.id)} color="red" />
-                        </View>
-                    )}
-                />
+                trackedShots.map((shot, index) => (
+                    <View key={shot.id} style={styles.trackedShotRow}>
+                        <Text>{`${shot.club}: ${shot.distance} yards`}</Text>
+                        <Text style={styles.timestamp}>Tracked: {new Date(shot.timestamp).toLocaleString()}</Text>
+                    </View>
+                ))
             ) : (
                 <Text>No tracked shots yet.</Text>
             )}
