@@ -1,15 +1,16 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
     View, Text, StyleSheet, ActivityIndicator, TouchableOpacity,
-    Modal, TextInput, Button, Alert,
+    Modal, TextInput, Button, Alert, Image
 } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, Polyline } from "react-native-maps";
 import * as Location from "expo-location";
 import haversine from "haversine";
 import { saveClubAndDistance, getClubsAndDistances, suggestClub } from "./firebaseUtils";
 import { auth } from "./firebaseConfig";
 import { useRoute, RouteProp, useNavigation, NavigationProp } from '@react-navigation/native';
 import axios from 'axios';
+//import { getDistance } from 'geolib';
 
 type RootStackParamList = {
     CourseSearchScreen: undefined;
@@ -176,6 +177,8 @@ export default function MapScreen() {
     const [isTrackShotVisible, setIsTrackShotVisible] = useState(false);
     const [userElevation, setUserElevation] = useState<number | null>(null);
     const [markedElevation, setMarkedElevation] = useState<number | null>(null);
+    const [showMenu, setShowMenu] = useState(false);
+
 
     // For club suggestions
     const [clubs, setClubs] = useState<Club[]>(DEFAULT_CLUBS);
@@ -301,7 +304,8 @@ export default function MapScreen() {
             longitude: selectedPoint.longitude,
         };
         const distanceInMeters = haversine(start, end, { unit: "meter" });
-        return (distanceInMeters * 1.09361).toFixed(2);
+        const distanceInYards = (distanceInMeters * 1.09361).toFixed(2);
+        return distanceInYards;
     };
 
     // pull weather details from api
@@ -341,8 +345,14 @@ export default function MapScreen() {
         if (elevation !== null) setMarkedElevation(elevation);
     };
 
-
-    //
+    // Calculate midpoint for distance box
+    const getMidpoint = () => {
+        if (!location || !selectedPoint) return null;
+        return {
+            latitude: (location.coords.latitude + selectedPoint.latitude) / 2,
+            longitude: (location.coords.longitude + selectedPoint.longitude) / 2,
+        };
+    };
 
     return (
         <View style={styles.container}>
@@ -352,27 +362,26 @@ export default function MapScreen() {
                 <>
                     {/* Course Info Box - Show either Dev Mode Course or Selected Course */}
                     <View style={styles.headerContainer}>
-                        {devMode ? (
-                            <>
-                                <Text style={styles.headerText}>Tee: {DEV_MODE_HOLE.tee}</Text>
-                                <Text style={styles.headerText}>Hole: #{DEV_MODE_HOLE.hole_number}</Text>
-                                <Text style={styles.headerText}>Distance: {DEV_MODE_HOLE.distance} yards</Text>
-                                <Text style={styles.headerText}>Par: {DEV_MODE_HOLE.par}</Text>
-                                <Text style={styles.headerText}>Handicap: {DEV_MODE_HOLE.handicap}</Text>
-                            </>
-                        ) : (
-                            course && selectedTee && holes ? (
-                                <>
-                                    <Text style={styles.headerText}>Tee: {selectedTee}</Text>
-                                    <Text style={styles.headerText}>Hole: #{holes[currentHoleIndex]?.hole_number}</Text>
-                                    <Text style={styles.headerText}>Distance: {holes[currentHoleIndex]?.distance} yards</Text>
-                                    <Text style={styles.headerText}>Par: {holes[currentHoleIndex]?.par}</Text>
-                                    <Text style={styles.headerText}>Handicap: {holes[currentHoleIndex]?.handicap}</Text>
-                                </>
-                            ) : (
-                                <Text style={styles.headerText}>No course selected</Text>
-                            )
-                        )}
+                        <View style={styles.headerItem}>
+                            <Text style={styles.headerLabel}>Hole </Text>
+                            <Text style={styles.headerValue}>#{currentHole?.hole_number || DEV_MODE_HOLE.hole_number}</Text>
+                        </View>
+                        <View style={styles.headerItem}>
+                            <Text style={styles.headerLabel}>To Hole</Text>
+                            <Text style={styles.headerValue}>{currentHole?.distance || DEV_MODE_HOLE.distance}y</Text>
+                        </View>
+                        <View style={styles.headerItem}>
+                            <Text style={styles.headerLabel}>Par </Text>
+                            <Text style={styles.headerValue}>{currentHole?.par || DEV_MODE_HOLE.par}</Text>
+                        </View>
+                        <View style={styles.headerItem}>
+                            <Text style={styles.headerLabel}>Tee </Text>
+                            <Text style={styles.headerValue}>{selectedTee || DEV_MODE_HOLE.tee}</Text>
+                        </View>
+                        <View style={styles.headerItem}>
+                            <Text style={styles.headerLabel}>Handicap </Text>
+                            <Text style={styles.headerValue}>{currentHole?.handicap || DEV_MODE_HOLE.handicap}</Text>
+                        </View>
                     </View>
                     {/* Map view and user marker */}
                     <MapView
@@ -386,73 +395,122 @@ export default function MapScreen() {
                         }}
                         onPress={handleMapPress}
                     >
+                        {/* User current location Marker */}
                         <Marker
                             coordinate={{
                                 latitude: location.coords.latitude,
-                                longitude: location.coords.longitude,
-                            }}
-                            title="Your Location"
-                        />
-                        {selectedPoint && (
-                            <Marker coordinate={selectedPoint} title="Selected Point" />
-                        )}
-                    </MapView>
-                    {/* wind */}
-                    <View style={styles.weatherBox}>
-                        <Text style={styles.weatherText}>
-                            Wind: {windSpeed !== null ? `${windSpeed} mph` : "--"}
-                        </Text>
-                        <Text style={styles.weatherText}>
-                            From: {windDirection !== null ? getCardinalDirection(windDirection) : "--"}
-                        </Text>
+                                longitude: location.coords.longitude
+                            }}>
+                            <Image source={require('../assets/images/golf_ball.png')} style={{ width: 30, height: 30 }} />
+                        </Marker>
 
-                    </View>
-                    {/* Distance/ club suggestion */}
+                        {/* Selected Point Marker */}
+                        {selectedPoint && (
+                            <Marker
+                                coordinate={selectedPoint}
+                                title="Selected Point"
+                                pinColor="red"
+                            />
+                        )}
+
+                    </MapView>
+                    {/* Line */}
+                    {location && selectedPoint && (
+                        <Polyline
+                            coordinates={[
+                                { latitude: location.coords.latitude, longitude: location.coords.longitude },
+                                { latitude: selectedPoint.latitude, longitude: selectedPoint.longitude }
+                            ]}
+                            strokeColor="#00FF00"
+                            strokeWidth={2}
+                            lineDashPattern={[4, 4]}
+                        />
+                    )}
+
+                    {/* Distance */}
                     {selectedPoint && (
-                        <View style={styles.infoBox}>
-                            <Text style={styles.infoText}> Distance: {getDistance()} yards </Text>
-                            {getDistance() &&
-                                clubs.length > 0 &&
-                                <Text style={styles.infoText}> Club: {suggestClub(parseFloat(getDistance()
-                                    || "0"), clubs)} </Text>}
+                        <View style={styles.distanceBox}>
+                            <Text style={styles.distanceText}>
+                                {getDistance()}y
+                            </Text>
+                            <Text style={styles.distanceText}>Plays like </Text>
+                            <Text style={styles.distanceText}>
+                                {(parseFloat(getDistance() || "0") +
+                                    ((markedElevation !== null && userElevation !== null)
+                                        ? (markedElevation - userElevation) * 0.3
+                                        : 0)).toFixed(2)}y
+                            </Text>
                         </View>
                     )}
+
                     {/* Elevation */}
                     <View style={styles.elevationBox}>
                         {userElevation !== null && markedElevation !== null ? (
                             <>
                                 <Text style={styles.elevationText}>
-                                    {Math.round((markedElevation - userElevation) * 3.28084)} ft
-                                    {markedElevation > userElevation ? "⬆️" : "⬇️"}
+                                    {Math.round((markedElevation - userElevation) * 3.28084)} ft {
+                                        markedElevation > userElevation ? "⬆️" : "⬇️"}
                                 </Text>
                             </>
                         ) : (
                             <Text style={styles.elevationText}>Elevation: -- ft</Text>
                         )}
                     </View>
-                    {/* Next Hole button */}
-                    <TouchableOpacity style={styles.nextHoleButton} onPress={handleNextHole}>
-                        <Text style={styles.buttonText}>Next Hole</Text>
-                    </TouchableOpacity>
-                    {/* Prev Hole button */}
-                    <TouchableOpacity style={styles.prevHoleButton} onPress={handlePrevHole}>
-                        <Text style={styles.buttonText}>Prev Hole</Text>
-                    </TouchableOpacity>
 
+                    {/* club suggestion */}
+                    {selectedPoint && (
+                        <View style={styles.infoBox}>
+                            {getDistance() &&
+                                clubs.length > 0 &&
+                                <Text style={styles.infoText}> Club: {suggestClub(parseFloat(getDistance()
+                                    || "0"), clubs)} </Text>}
+                        </View>
+                    )}
+
+                    {/* wind */}
+                    <View style={styles.weatherBox}>
+                        <View style={styles.headerItem}>
+                            <Text style={styles.weatherWind}>Wind</Text>
+                            <Text style={styles.weatherText}>
+                                {windSpeed} mph
+                            </Text>
+                            <Text style={styles.weatherText}>
+                                From: {getCardinalDirection(windDirection || 0)}
+                            </Text>
+                        </View>
+                    </View>
+
+
+                    {/* Menu */}
+                    {/* Sidebar Toggle Button */}
                     <TouchableOpacity
-                        style={styles.floatingButton}
-                        onPress={() => setIsTrackShotVisible(true)}
+                        style={[
+                            styles.menuToggle,
+                            // Move the arrow out with the menu
+                            { right: showMenu ? 150 : 10 }
+                        ]}
+                        onPress={() => setShowMenu(!showMenu)}
                     >
-                        <Text style={styles.buttonText}>Track Shot</Text>
+                        <Text style={styles.menuToggleText}>{showMenu ? "❮" : "❯"}</Text>
                     </TouchableOpacity>
+                    {showMenu && (
+                        <View style={styles.menuContainer}>
+                            <TouchableOpacity style={styles.menuButton} onPress={handlePrevHole}>
+                                <Text style={styles.buttonText}>Prev Hole</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.menuButton} onPress={handleNextHole}>
+                                <Text style={styles.buttonText}>Next Hole</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.menuButton} onPress={() => navigation.navigate('ScorecardScreen')}>
+                                <Text style={styles.buttonText}>Scorecard</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.menuButton} onPress={() => setIsTrackShotVisible(true)}>
+                                <Text style={styles.buttonText}>Track Shot</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
-                    <TouchableOpacity
-                        style={[styles.floatingButton, { bottom: 80 }]}
-                        onPress={() => navigation.navigate('ScorecardScreen')}
-                    >
-                        <Text style={styles.buttonText}>Scorecard</Text>
-                    </TouchableOpacity>
-
+                    {/* Track Shot Modal */}
                     <TrackShotModal
                         visible={isTrackShotVisible}
                         distance={parseFloat(getDistance() || "0")}
@@ -507,28 +565,41 @@ const styles = StyleSheet.create({
         marginBottom: 5,
     },
 
+    /** === SIDE MENU === **/
+    menuToggle: {
+        position: "absolute",
+        top: "50%",
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        padding: 15,
+        borderRadius: 10,
+    },
+    menuToggleText: {
+        color: "#fff",
+        fontSize: 18
+    },
+    menuContainer: {
+        position: "absolute",
+        top: "40%",
+        right: 10,
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        padding: 10,
+        borderRadius: 10,
+    },
+    menuButton: {
+        backgroundColor: "green",
+        padding: 10,
+        marginBottom: 5,
+        borderRadius: 5,
+        alignItems: "center",
+    },
+
+
     /** === BUTTONS === **/
     floatingButton: {
         position: "absolute",
         bottom: 20,
         right: 20,
         backgroundColor: "blue",
-        padding: 10,
-        borderRadius: 5,
-    },
-    nextHoleButton: {
-        position: "absolute",
-        bottom: 120,
-        left: 10,
-        backgroundColor: "green",
-        padding: 10,
-        borderRadius: 5,
-    },
-    prevHoleButton: {
-        position: "absolute",
-        bottom: 175,
-        left: 10,
-        backgroundColor: "orange",
         padding: 10,
         borderRadius: 5,
     },
@@ -571,18 +642,35 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         elevation: 3,
     },
+
+    /** CLUB SUGGESTION **/
     infoBox: {
         position: "absolute",
         bottom: 35,
         left: 10,
-        backgroundColor: "white",
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
         padding: 10,
         borderRadius: 5,
         elevation: 3,
     },
     infoText: {
         fontSize: 16,
+        color: "#fff",
         fontWeight: "bold",
+    },
+    distanceBox: {
+        position: "absolute",
+        top: "45%",
+        left: "50%",
+        transform: [{ translateX: -50 }],
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        padding: 8,
+        borderRadius: 30,
+    },
+    distanceText: {
+        color: "#fff",
+        fontWeight: "bold",
+        fontSize: 16,
     },
 
     /** === HEADER INFO (Course details) === **/
@@ -590,46 +678,62 @@ const styles = StyleSheet.create({
         position: "absolute",
         top: 10,
         left: 10,
-        backgroundColor: '#f0f0f0',
+        right: 10,
+        flexDirection: "row",
+        justifyContent: "space-around",
+        backgroundColor: "rgba(34, 139, 34, 0.93)",
         padding: 10,
-        borderRadius: 5,
-        borderBottomWidth: 1,
-        borderColor: '#ccc',
+        borderRadius: 30,
         // render last
         zIndex: 100,
     },
-    headerText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 5,
+    headerItem: {
+        alignItems: "center"
+    },
+    headerLabel: {
+        fontSize: 12,
+        color: "#ddd"
+    },
+    headerValue: {
+        fontSize: 30,
+        fontWeight: "bold",
+        color: "#fff"
     },
 
     /** === WEATHER BOX === **/
     weatherBox: {
         position: "absolute",
-        top: 10,
+        top: 100,
         right: 10,
-        backgroundColor: "white",
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
         padding: 10,
-        borderRadius: 5,
+        borderRadius: 30,
         elevation: 3,
     },
-    weatherText: {
-        fontSize: 16,
+    weatherWind: {
+        fontSize: 14,
         fontWeight: "bold",
+        justifyContent: "center",
+        color: "#fff",
+    },
+    weatherText: {
+        fontSize: 14,
+        fontWeight: "bold",
+        color: "#fff",
     },
     /** === Elevation Box/ text === **/
     elevationBox: {
         position: "absolute",
-        top: 95,
+        top: 205,
         right: 10,
-        backgroundColor: "white",
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
         padding: 10,
-        borderRadius: 5,
+        borderRadius: 30,
         elevation: 3,
     },
     elevationText: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: "bold",
+        color: "#fff",
     },
 });
