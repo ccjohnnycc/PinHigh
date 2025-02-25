@@ -304,8 +304,8 @@ export default function MapScreen() {
             longitude: selectedPoint.longitude,
         };
         const distanceInMeters = haversine(start, end, { unit: "meter" });
-        const distanceInYards = (distanceInMeters * 1.09361).toFixed(2);
-        return distanceInYards;
+        const distanceInYards = distanceInMeters * 1.09361;
+        return Math.round(distanceInYards);
     };
 
     // pull weather details from api
@@ -361,28 +361,30 @@ export default function MapScreen() {
             ) : (
                 <>
                     {/* Course Info Box - Show either Dev Mode Course or Selected Course */}
-                    <View style={styles.headerContainer}>
-                        <View style={styles.headerItem}>
-                            <Text style={styles.headerLabel}>Hole </Text>
-                            <Text style={styles.headerValue}>#{currentHole?.hole_number || DEV_MODE_HOLE.hole_number}</Text>
+                    {(devMode || (course && selectedTee && holes?.length > 0)) && (
+                        <View style={styles.headerContainer}>
+                            <View style={styles.headerItem}>
+                                <Text style={styles.headerLabel}>Hole </Text>
+                                <Text style={styles.headerValue}>#{currentHole?.hole_number || DEV_MODE_HOLE.hole_number}</Text>
+                            </View>
+                            <View style={styles.headerItem}>
+                                <Text style={styles.headerLabel}>To Hole </Text>
+                                <Text style={styles.headerValue}>{currentHole?.distance || DEV_MODE_HOLE.distance}y</Text>
+                            </View>
+                            <View style={styles.headerItem}>
+                                <Text style={styles.headerLabel}>Par </Text>
+                                <Text style={styles.headerValue}>{currentHole?.par || DEV_MODE_HOLE.par}</Text>
+                            </View>
+                            <View style={styles.headerItem}>
+                                <Text style={styles.headerLabel}>Tee </Text>
+                                <Text style={styles.headerValue}>{selectedTee || DEV_MODE_HOLE.tee}</Text>
+                            </View>
+                            <View style={styles.headerItem}>
+                                <Text style={styles.headerLabel}>Handicap </Text>
+                                <Text style={styles.headerValue}>{currentHole?.handicap || DEV_MODE_HOLE.handicap}</Text>
+                            </View>
                         </View>
-                        <View style={styles.headerItem}>
-                            <Text style={styles.headerLabel}>To Hole</Text>
-                            <Text style={styles.headerValue}>{currentHole?.distance || DEV_MODE_HOLE.distance}y</Text>
-                        </View>
-                        <View style={styles.headerItem}>
-                            <Text style={styles.headerLabel}>Par </Text>
-                            <Text style={styles.headerValue}>{currentHole?.par || DEV_MODE_HOLE.par}</Text>
-                        </View>
-                        <View style={styles.headerItem}>
-                            <Text style={styles.headerLabel}>Tee </Text>
-                            <Text style={styles.headerValue}>{selectedTee || DEV_MODE_HOLE.tee}</Text>
-                        </View>
-                        <View style={styles.headerItem}>
-                            <Text style={styles.headerLabel}>Handicap </Text>
-                            <Text style={styles.headerValue}>{currentHole?.handicap || DEV_MODE_HOLE.handicap}</Text>
-                        </View>
-                    </View>
+                    )}
                     {/* Map view and user marker */}
                     <MapView
                         style={styles.map}
@@ -413,33 +415,43 @@ export default function MapScreen() {
                             />
                         )}
 
+                        {/* Line */}
+                        {location && selectedPoint && (
+                            <Polyline
+                                coordinates={[
+                                    { latitude: location.coords.latitude, longitude: location.coords.longitude },
+                                    { latitude: selectedPoint.latitude, longitude: selectedPoint.longitude }
+                                ]}
+                                strokeColor="#fff"
+                                strokeWidth={3}
+                                lineDashPattern={[4, 3]}
+                            />
+                        )}
                     </MapView>
-                    {/* Line */}
-                    {location && selectedPoint && (
-                        <Polyline
-                            coordinates={[
-                                { latitude: location.coords.latitude, longitude: location.coords.longitude },
-                                { latitude: selectedPoint.latitude, longitude: selectedPoint.longitude }
-                            ]}
-                            strokeColor="#00FF00"
-                            strokeWidth={2}
-                            lineDashPattern={[4, 4]}
-                        />
-                    )}
 
-                    {/* Distance */}
-                    {selectedPoint && (
-                        <View style={styles.distanceBox}>
-                            <Text style={styles.distanceText}>
-                                {getDistance()}y
-                            </Text>
-                            <Text style={styles.distanceText}>Plays like </Text>
-                            <Text style={styles.distanceText}>
-                                {(parseFloat(getDistance() || "0") +
-                                    ((markedElevation !== null && userElevation !== null)
-                                        ? (markedElevation - userElevation) * 0.3
-                                        : 0)).toFixed(2)}y
-                            </Text>
+                    {/* Distance Display */}
+                    {selectedPoint && getDistance() !== null && (
+                        <View style={styles.distanceContainer}>
+                            {/* Main Distance */}
+                            <View style={styles.mainDistanceBox}>
+                                <Text style={styles.mainDistanceText}>
+                                    {getDistance()}y
+                                </Text>
+                            </View>
+
+                            {/* Plays Like Section */}
+                            <View style={styles.playsLikeBox}>
+                                <Text style={styles.playsLikeLabel}>Plays Like </Text>
+                                <Text style={styles.playsLikeDistance}>
+                                    {Math.round(
+                                        getDistance()! +
+                                        (markedElevation !== null && userElevation !== null
+                                            ? (markedElevation - userElevation) * 1.0
+                                            : 0)
+                                    )}y
+                                </Text>
+                            </View>
+
                         </View>
                     )}
 
@@ -458,12 +470,11 @@ export default function MapScreen() {
                     </View>
 
                     {/* club suggestion */}
-                    {selectedPoint && (
+                    {selectedPoint && getDistance() !== null && clubs.length > 0 && (
                         <View style={styles.infoBox}>
-                            {getDistance() &&
-                                clubs.length > 0 &&
-                                <Text style={styles.infoText}> Club: {suggestClub(parseFloat(getDistance()
-                                    || "0"), clubs)} </Text>}
+                            <Text style={styles.infoText}>
+                                Club: {suggestClub(getDistance()!, clubs)}
+                            </Text>
                         </View>
                     )}
 
@@ -513,7 +524,7 @@ export default function MapScreen() {
                     {/* Track Shot Modal */}
                     <TrackShotModal
                         visible={isTrackShotVisible}
-                        distance={parseFloat(getDistance() || "0")}
+                        distance={getDistance()}
                         onClose={() => setIsTrackShotVisible(false)}
                     />
                 </>
@@ -523,6 +534,14 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
+    /** === MAP & INFO DISPLAYS === **/
+    container: {
+        flex: 1,
+    },
+    map: {
+        flex: 1,
+    },
+
     /** === modals Track Shot === **/
     modalOverlay: {
         flex: 1,
@@ -541,13 +560,6 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         marginBottom: 5,
     },
-    modalContainer: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "rgb(255, 255, 255)",
-        padding: 20,
-    },
 
     /** === TEXT INPUTS & LABELS === **/
     input: {
@@ -557,12 +569,6 @@ const styles = StyleSheet.create({
         marginVertical: 5,
         borderRadius: 5,
         width: "100%",
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: "bold",
-        marginTop: 10,
-        marginBottom: 5,
     },
 
     /** === SIDE MENU === **/
@@ -593,54 +599,10 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
 
-
     /** === BUTTONS === **/
-    floatingButton: {
-        position: "absolute",
-        bottom: 20,
-        right: 20,
-        backgroundColor: "blue",
-        padding: 10,
-        borderRadius: 5,
-    },
     buttonText: {
         color: "white",
         fontWeight: "bold",
-    },
-    buttonRow: {
-        marginTop: 20,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    removeButton: {
-        backgroundColor: "red",
-        padding: 5,
-        borderRadius: 5,
-        marginLeft: 10,
-    },
-    removeButtonText: {
-        color: "white",
-        fontWeight: "bold",
-    },
-
-    /** === MAP & INFO DISPLAYS === **/
-    container: {
-        flex: 1,
-    },
-    map: {
-        flex: 1,
-    },
-
-    /** INFO BOXES Distance **/
-    infoContainer: {
-        position: "absolute",
-        bottom: 35,
-        left: 10,
-        right: 10,
-        backgroundColor: "white",
-        padding: 10,
-        borderRadius: 5,
-        elevation: 3,
     },
 
     /** CLUB SUGGESTION **/
@@ -658,19 +620,48 @@ const styles = StyleSheet.create({
         color: "#fff",
         fontWeight: "bold",
     },
-    distanceBox: {
+
+    /** DISTANCE BOXES **/
+    distanceContainer: {
         position: "absolute",
-        top: "45%",
-        left: "50%",
-        transform: [{ translateX: -50 }],
-        backgroundColor: "rgba(0, 0, 0, 0.7)",
-        padding: 8,
+        top: "50%",
+        left: "20%",
+        transform: [{ translateX: -80 }, { translateY: -20 }],
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "rgba(255, 255, 255, 0.77)",
         borderRadius: 30,
+        borderColor: "#fff",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.8,
+        shadowRadius: 3,
+        elevation: 5,
     },
-    distanceText: {
+    mainDistanceBox: {
+        marginRight: -2,
+        padding: 15,
+        borderRadius: 30,
+        backgroundColor: "rgba(0, 0, 0, 0.89)",
+    },
+    mainDistanceText: {
         color: "#fff",
+        fontSize: 20,
         fontWeight: "bold",
-        fontSize: 16,
+    },
+    playsLikeBox: {
+        alignItems: "center",
+        padding: 10,
+    },
+    playsLikeLabel: {
+        color: "#000",
+        fontSize: 8,
+        textTransform: "uppercase",
+    },
+    playsLikeDistance: {
+        color: "#000",
+        fontSize: 15,
+        fontWeight: "bold",
     },
 
     /** === HEADER INFO (Course details) === **/
