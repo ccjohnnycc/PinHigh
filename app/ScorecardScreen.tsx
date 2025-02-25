@@ -40,19 +40,19 @@ export default function ScorecardScreen() {
   // Save scorecard when leaving the screen
   useEffect(() => {
     const saveData = async () => {
-      try {
-        await AsyncStorage.setItem(
-          'savedScorecard',
-          JSON.stringify({ courseName, players })
-        );
-      } catch (error) {
-        console.error('Failed to save scorecard:', error);
-      }
+        try {
+            const dataToSave = JSON.stringify({ courseName, players });
+            console.log("💾 Saving scorecard:", dataToSave);
+            await AsyncStorage.setItem('savedScorecard', dataToSave);
+        } catch (error) {
+            console.error('Failed to save scorecard:', error);
+        }
     };
 
     const unsubscribe = navigation.addListener('blur', saveData);
     return unsubscribe;
-  }, [courseName, players]);
+}, [courseName, players]);
+
 
   // Fetch scorecards when loaded
   useEffect(() => {
@@ -100,7 +100,7 @@ export default function ScorecardScreen() {
     ]);
   };
 
-  // 💾 Save current scorecard to Firebase
+  // Save current scorecard to Firebase
   const handleSaveScorecard = async () => {
     if (!courseName.trim()) {
       Alert.alert('Error', 'Please enter a course name.');
@@ -131,8 +131,18 @@ export default function ScorecardScreen() {
   // Load previous scorecard into new round
   const loadScorecard = (scorecard: any) => {
     setCourseName(scorecard.course);
-    setPlayers([{ name: scorecard.player, scores: scorecard.scores.map(String) }]);
-  };
+
+    // Check if scorecard.players exists and map it correctly
+    if (scorecard.players && Array.isArray(scorecard.players)) {
+        setPlayers(scorecard.players.map((player: any) => ({
+            name: player.name || "Unknown",
+            scores: player.scores ? player.scores.map(String) : Array(18).fill(''),
+        })));
+    } else {
+        Alert.alert("Error", "No player data found in this scorecard.");
+        setPlayers([{ name: 'Player 1', scores: Array(18).fill('') }]);
+    }
+};
 
   // Delete scorecard
   const handleDeleteScorecard = async (id: string) => {
@@ -155,7 +165,7 @@ export default function ScorecardScreen() {
       <ScrollView>
         <Text style={styles.title}>Scorecard</Text>
 
-        {/* 🟢 Course Name Input */}
+        {/* Course Name Input */}
         <Text style={styles.label}>Course Name:</Text>
         <TextInput
           style={styles.input}
@@ -164,7 +174,7 @@ export default function ScorecardScreen() {
           onChangeText={setCourseName}
         />
 
-        {/* 👤 Player & Score Inputs */}
+        {/* Player & Score Inputs */}
         {players.map((player, playerIndex) => (
           <View key={playerIndex} style={styles.playerContainer}>
             <View style={styles.playerHeader}>
@@ -180,7 +190,7 @@ export default function ScorecardScreen() {
               <Button title="Remove" onPress={() => removePlayer(playerIndex)} color="red" />
             </View>
 
-            {/* 📝 Hole Scores */}
+            {/* Hole Scores */}
             <ScrollView horizontal>
               <View style={styles.holeContainer}>
                 {Array.from({ length: 18 }, (_, i) => (
@@ -204,14 +214,14 @@ export default function ScorecardScreen() {
           </View>
         ))}
 
-        {/* 🟡 Scorecard Actions */}
+        {/* Scorecard Actions */}
         <Button title="Add Player" onPress={addPlayer} />
         <Button title="Clear Scores" onPress={clearScores} color="orange" />
         <Button title="Save Scorecard" onPress={handleSaveScorecard} />
         <Button title="Back to Map" onPress={() => navigation.goBack()} />
       </ScrollView>
 
-      {/* 🔄 Previous Scorecards */}
+      {/* Previous Scorecards */}
       <Text style={styles.title}>Previous Scorecards</Text>
       {scorecards.length > 0 ? (
         <FlatList
