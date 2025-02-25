@@ -28,7 +28,7 @@ export default function HomeScreen() {
 
         {/* Buttons */}
         <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('CourseSearchScreen')}>
-          <Text style={styles.buttonText}>Search Course</Text>
+          <Text style={styles.buttonText}>Search Courses</Text>
         </TouchableOpacity>
 
         {/* Sign-In/Sign-Up Button (Single Button) */}
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
 
   /** === BUTTONS === **/
   button: {
-    backgroundColor: "#FF8C00",   // Matching prototype orange
+    backgroundColor: "#FF8C00",
     paddingVertical: 12,
     paddingHorizontal: 30,
     borderRadius: 30,
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
-    elevation: 5, // For Android shadow
+    elevation: 5,
   },
   buttonText: {
     color: "#fff",
