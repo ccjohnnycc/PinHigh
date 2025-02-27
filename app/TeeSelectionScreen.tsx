@@ -97,6 +97,12 @@ export default function TeeSelectionScreen() {
 
     return (
         <View style={styles.container}>
+
+            {/* Floating Back Button */}
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                <Text style={styles.backText}>←</Text>
+            </TouchableOpacity>
+            
             <Text style={styles.title}>Select a Tee</Text>
 
             {/* Gender Selection Buttons */}
@@ -137,7 +143,7 @@ export default function TeeSelectionScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
     title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
-    
+
     genderSelection: {
         flexDirection: 'row',
         marginBottom: 20,
@@ -160,4 +166,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     buttonText: { color: 'white', fontWeight: 'bold' },
+
+    /** === Back Button === **/
+    backButton: {
+        position: "absolute",
+        top: 10,
+        left: 10,
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        padding: 5,
+        borderRadius: 50,
+    },
+    backText: {
+        fontSize: 30,
+        color: "#fff",
+        fontWeight: "bold",
+        lineHeight: 30,
+    },
 });

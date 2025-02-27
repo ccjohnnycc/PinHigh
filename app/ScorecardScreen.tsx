@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, TextInput, FlatList, Button,
-  StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform
+  StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity
 } from 'react-native';
 import { getScorecards, deleteScorecard, saveScorecard } from './firebaseUtils';
 import { auth } from './firebaseConfig';
@@ -40,18 +40,22 @@ export default function ScorecardScreen() {
   // Save scorecard when leaving the screen
   useEffect(() => {
     const saveData = async () => {
-        try {
-            const dataToSave = JSON.stringify({ courseName, players });
-            console.log("💾 Saving scorecard:", dataToSave);
-            await AsyncStorage.setItem('savedScorecard', dataToSave);
-        } catch (error) {
-            console.error('Failed to save scorecard:', error);
-        }
+      try {
+        const dataToSave = JSON.stringify({ courseName, players });
+        console.log("Saving scorecard:", dataToSave);
+        await AsyncStorage.setItem('savedScorecard', dataToSave);
+      } catch (error) {
+        console.error('Failed to save scorecard:', error);
+      }
     };
 
+    // Listen for navigation away from the screen and save data
     const unsubscribe = navigation.addListener('blur', saveData);
-    return unsubscribe;
-}, [courseName, players]);
+
+    // Cleanup subscription
+    return () => unsubscribe();
+  }, [courseName, players, navigation]);
+
 
 
   // Fetch scorecards when loaded
@@ -134,15 +138,15 @@ export default function ScorecardScreen() {
 
     // Check if scorecard.players exists and map it correctly
     if (scorecard.players && Array.isArray(scorecard.players)) {
-        setPlayers(scorecard.players.map((player: any) => ({
-            name: player.name || "Unknown",
-            scores: player.scores ? player.scores.map(String) : Array(18).fill(''),
-        })));
+      setPlayers(scorecard.players.map((player: any) => ({
+        name: player.name || "Unknown",
+        scores: player.scores ? player.scores.map(String) : Array(18).fill(''),
+      })));
     } else {
-        Alert.alert("Error", "No player data found in this scorecard.");
-        setPlayers([{ name: 'Player 1', scores: Array(18).fill('') }]);
+      Alert.alert("Error", "No player data found in this scorecard.");
+      setPlayers([{ name: 'Player 1', scores: Array(18).fill('') }]);
     }
-};
+  };
 
   // Delete scorecard
   const handleDeleteScorecard = async (id: string) => {
@@ -162,6 +166,12 @@ export default function ScorecardScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
+        {/* Floating Back Button */}
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
+
+
       <ScrollView>
         <Text style={styles.title}>Scorecard</Text>
 
@@ -207,7 +217,7 @@ export default function ScorecardScreen() {
               </View>
             </ScrollView>
 
-            {/* 🟢 Total Score */}
+            {/* Total Score */}
             <Text style={styles.totalScore}>
               Total Score: {getTotalScore(player.scores)}
             </Text>
@@ -249,6 +259,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff'
   },
   title: {
+    marginTop: 30,
     fontSize: 32,
     fontWeight: 'bold',
     marginBottom: 10
@@ -297,5 +308,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10
+  },
+  /** === Back Button === **/
+  backButton: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    padding: 5,
+    borderRadius: 50,
+  },
+  backText: {
+    fontSize: 30,
+    color: "#fff",
+    fontWeight: "bold",
+    lineHeight: 30,
   },
 });

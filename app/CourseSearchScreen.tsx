@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, FlatList, Text, StyleSheet } from 'react-native';
+import { View, TextInput, Button, FlatList, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import { useNavigation } from 'expo-router';
 import { NavigationProp } from '@react-navigation/native';
@@ -64,12 +64,46 @@ export default function CourseSearchScreen() {
                     </Text>
                 )}
             />
+
+            {/* Back Button */}
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                <Text style={styles.backText}>←</Text>
+            </TouchableOpacity>
         </View>
+        
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20 },
-    input: { borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 5 },
-    course: { padding: 10, borderBottomWidth: 1 },
+    container: { 
+        flex: 1, 
+        justifyContent: 'center',
+        padding: 20 
+    },
+    input: { 
+        marginTop: 40,
+        borderWidth: 1, 
+        padding: 10, 
+        marginBottom: 10, 
+        borderRadius: 5 
+    },
+    course: { 
+        padding: 10, 
+        borderBottomWidth: 1 
+    },
+    /** === Back Button === **/
+    backButton: {
+        position: "absolute",
+        top: 10,
+        left: 10,
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        padding: 5,
+        borderRadius: 50,
+    },
+    backText: {
+        fontSize: 30,
+        color: "#fff",
+        fontWeight: "bold",
+        lineHeight: 30,
+    },
 });

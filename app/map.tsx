@@ -360,6 +360,7 @@ export default function MapScreen() {
                 <ActivityIndicator size="large" />
             ) : (
                 <>
+
                     {/* Course Info Box - Show either Dev Mode Course or Selected Course */}
                     {(devMode || (course && selectedTee && holes?.length > 0)) && (
                         <View style={styles.headerContainer}>
@@ -385,10 +386,12 @@ export default function MapScreen() {
                             </View>
                         </View>
                     )}
+
                     {/* Map view and user marker */}
                     <MapView
                         style={styles.map}
                         mapType="satellite"
+                        showsCompass={false}
                         initialRegion={{
                             latitude: location.coords.latitude,
                             longitude: location.coords.longitude,
@@ -429,6 +432,11 @@ export default function MapScreen() {
                         )}
                     </MapView>
 
+                    {/* Back Button */}
+                    <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                        <Text style={styles.backText}> ← </Text>
+                    </TouchableOpacity>
+                    
                     {/* Distance Display */}
                     {selectedPoint && getDistance() !== null && (
                         <View style={styles.distanceContainer}>
@@ -610,7 +618,7 @@ const styles = StyleSheet.create({
         position: "absolute",
         bottom: 35,
         left: 10,
-        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
         padding: 10,
         borderRadius: 5,
         elevation: 3,
@@ -668,8 +676,8 @@ const styles = StyleSheet.create({
     headerContainer: {
         position: "absolute",
         top: 10,
-        left: 10,
-        right: 10,
+        left: 60,
+        right: 60,
         flexDirection: "row",
         justifyContent: "space-around",
         backgroundColor: "rgba(34, 139, 34, 0.93)",
@@ -682,11 +690,11 @@ const styles = StyleSheet.create({
         alignItems: "center"
     },
     headerLabel: {
-        fontSize: 12,
+        fontSize: 8,
         color: "#ddd"
     },
     headerValue: {
-        fontSize: 30,
+        fontSize: 20,
         fontWeight: "bold",
         color: "#fff"
     },
@@ -726,5 +734,20 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: "bold",
         color: "#fff",
+    },
+    /** === Back Button === **/
+    backButton: {
+        position: "absolute",
+        top: 25,
+        left: 2,
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        padding: 5,
+        borderRadius: 50,
+    },
+    backText: {
+        fontSize: 30,
+        color: "#fff",
+        fontWeight: "bold",
+        lineHeight: 30,
     },
 });

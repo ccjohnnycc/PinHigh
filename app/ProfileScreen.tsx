@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
     View, Text, TextInput, FlatList, Button, StyleSheet,
-    Alert
+    Alert, TouchableOpacity
 } from 'react-native';
 import {
     DEFAULT_CLUBS, getUserClubs, updateUserClub, getTrackedShots,
     deleteTrackedShot, getScorecards, deleteScorecard
 } from './firebaseUtils';
 import { auth } from './firebaseConfig';
+import { NavigationProp, useNavigation } from '@react-navigation/native';
 
 type TrackedShot = {
     id: string;
@@ -29,6 +30,7 @@ export default function ProfileScreen() {
     const [trackedShots, setTrackedShots] = useState<TrackedShot[]>([]);
     const [scorecards, setScorecards] = useState<Scorecard[]>([]);
     const userId = auth.currentUser?.uid;
+    const navigation = useNavigation<NavigationProp<any>>();
 
     // fetch user data
     useEffect(() => {
@@ -158,7 +160,11 @@ export default function ProfileScreen() {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Profile</Text>
+
+            {/* Floating Back Button */}
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                <Text style={styles.backText}>←</Text>
+            </TouchableOpacity>
 
             {/* club Management */}
             <Text style={styles.sectionTitle}>Default Clubs</Text>
@@ -175,7 +181,7 @@ export default function ProfileScreen() {
                             onChangeText={(value) => handleClubDistanceChange(item.club, value)}
                             onBlur={() => saveClubDistance(item.club, item.distance)}
                         />
-                        <Text style={styles.unitText}>yards</Text>
+                        <Text style={styles.unitText}>yards </Text>
                     </View>
                 )}
             />
@@ -218,13 +224,14 @@ const styles = StyleSheet.create({
     },
     title:
     {
+        left: 30,
         fontSize: 32,
         fontWeight: 'bold',
         marginBottom: 10
     },
     sectionTitle: {
         fontSize: 24,
-        marginTop: 20,
+        marginTop: 40,
         marginBottom: 10
     },
     clubRow: {
@@ -257,5 +264,20 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginVertical: 5
+    },
+    /** === Back Button === **/
+    backButton: {
+        position: "absolute",
+        top: 10,
+        left: 10,
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        padding: 5,
+        borderRadius: 50,
+    },
+    backText: {
+        fontSize: 30,
+        color: "#fff",
+        fontWeight: "bold",
+        lineHeight: 30,
     },
 });
