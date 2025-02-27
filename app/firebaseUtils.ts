@@ -35,7 +35,8 @@ export const saveTrackedShot = async (userId: string, club: string, distance: nu
 };
 
 // fetch all tracked shots for the user
-export const getTrackedShots = async (userId: string): Promise<{ id: string; club: string; distance: number; timestamp: string }[]> => {
+export const getTrackedShots = async (userId: string): Promise<{ id: string; club: string; 
+    distance: number; timestamp: string }[]> => {
     if (!userId) return [];
 
     try {
