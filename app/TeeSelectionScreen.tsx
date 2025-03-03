@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView } from 'react-native';
 import { useNavigation, useRoute, NavigationProp, RouteProp } from '@react-navigation/native';
+
+const { width, height } = Dimensions.get("window");
 
 type RootStackParamList = {
     CourseSearch: undefined;
@@ -47,7 +49,7 @@ export default function TeeSelectionScreen() {
     if (!route.params || !route.params.course) {
         return (
             <View style={styles.container}>
-                <Text style={{ color: "red", fontSize: 18 }}>Error: No course data found.</Text>
+                <Text style={styles.errorText}>Error: No course data found.</Text>
             </View>
         );
     }
@@ -123,64 +125,103 @@ export default function TeeSelectionScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* Tee Name Selection */}
-            {availableTeeNames.length > 0 ? (
-                availableTeeNames.map((teeName) => (
-                    <TouchableOpacity
-                        key={teeName}
-                        style={styles.teeButton}
-                        onPress={() => handleTeeSelect(teeName)}
-                    >
-                        <Text style={styles.buttonText}>{teeName}</Text>
-                    </TouchableOpacity>
-                ))
-            ) : (
-                <Text style={{ color: "red", marginTop: 10 }}>No tees available for this category.</Text>
-            )}
+            {/* Tee Selection */}
+            <ScrollView style={styles.teeContainer}>
+                {availableTeeNames.length > 0 ? (
+                    availableTeeNames.map((teeName) => (
+                        <TouchableOpacity
+                            key={teeName}
+                            style={styles.teeButton}
+                            onPress={() => handleTeeSelect(teeName)}
+                        >
+                            <Text style={styles.teeButtonText}>{teeName}</Text>
+                        </TouchableOpacity>
+                    ))
+                ) : (
+                    <Text style={styles.errorText}>No tees available for this category.</Text>
+                )}
+            </ScrollView>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
-
+    container: { 
+        flex: 1,
+        backgroundColor: "#1E1E1E",
+        alignItems: "center",
+        paddingHorizontal: 20,
+        paddingTop: 80,
+    },
+    title: { 
+        fontSize: 28,
+        fontWeight: "bold",
+        color: "#FFD700",
+        marginBottom: 20,
+        textTransform: "uppercase",
+        textShadowColor: "rgba(0, 0, 0, 0.8)",
+        textShadowOffset: { width: 2, height: 2 },
+        textShadowRadius: 5,
+    },
     genderSelection: {
         flexDirection: 'row',
         marginBottom: 20,
     },
     genderButton: {
-        backgroundColor: '#888',
-        padding: 10,
+        paddingVertical: 12,
+        paddingHorizontal: 25,
+        borderRadius: 30,
         marginHorizontal: 10,
-        borderRadius: 5,
+        backgroundColor: "#444",
+        alignItems: "center",
     },
     selectedGender: {
-        backgroundColor: '#2196F3',
+        backgroundColor: '#FF8C00',
+    },
+    genderText: {
+        color: "#fff",
+        fontSize: 18,
+        fontWeight: "bold",
+    },
+    teeContainer: {
+        width: "100%",
     },
     teeButton: {
-        backgroundColor: '#2196F3',
-        padding: 15,
-        marginVertical: 10,
-        borderRadius: 5,
-        width: '80%',
-        alignItems: 'center',
+        backgroundColor: "#FF8C00",
+        paddingVertical: 15,
+        borderRadius: 30,
+        marginBottom: 10,
+        width: width * 0.8,
+        alignItems: "center",
+        alignSelf: "center",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
     },
-    buttonText: { color: 'white', fontWeight: 'bold' },
+    teeButtonText: {
+        color: "#fff",
+        fontSize: 18,
+        fontWeight: "bold",
+    },
+    buttonText: { 
+        color: 'white', 
+        fontWeight: 'bold' 
+    },
+    errorText: {
+        color: "red",
+        fontSize: 16,
+        marginTop: 10,
+        textAlign: "center",
+    },
 
     /** === Back Button === **/
     backButton: {
         position: "absolute",
-        top: 10,
-        left: 10,
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
-        padding: 5,
+        top: 40,
+        left: 20,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        padding: 10,
         borderRadius: 50,
-    },
-    backText: {
-        fontSize: 30,
-        color: "#fff",
-        fontWeight: "bold",
-        lineHeight: 30,
     },
 });
