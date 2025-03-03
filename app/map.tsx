@@ -10,6 +10,7 @@ import { saveClubAndDistance, getClubsAndDistances, suggestClub } from "./fireba
 import { auth } from "./firebaseConfig";
 import { useRoute, RouteProp, useNavigation, NavigationProp } from '@react-navigation/native';
 import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
 //import { getDistance } from 'geolib';
 
 type RootStackParamList = {
@@ -434,9 +435,9 @@ export default function MapScreen() {
 
                     {/* Back Button */}
                     <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                        <Text style={styles.backText}> ← </Text>
+                        <Ionicons name="arrow-back" size={30} color="white" />
                     </TouchableOpacity>
-                    
+
                     {/* Distance Display */}
                     {selectedPoint && getDistance() !== null && (
                         <View style={styles.distanceContainer}>
@@ -710,13 +711,13 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     weatherWind: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: "bold",
         justifyContent: "center",
         color: "#fff",
     },
     weatherText: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: "bold",
         color: "#fff",
     },
@@ -731,7 +732,7 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     elevationText: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: "bold",
         color: "#fff",
     },
