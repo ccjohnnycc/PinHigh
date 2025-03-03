@@ -1,14 +1,16 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, TextInput, FlatList, Button,
-  StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity
+  View, Text, TextInput, FlatList, Button, StyleSheet, Alert,
+  ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, Dimensions
 } from 'react-native';
 import { getScorecards, deleteScorecard, saveScorecard } from './firebaseUtils';
 import { auth } from './firebaseConfig';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
+const { width, height } = Dimensions.get("window");
 type Player = { name: string; scores: string[] };
 
 export default function ScorecardScreen() {
@@ -16,7 +18,10 @@ export default function ScorecardScreen() {
   const [scorecards, setScorecards] = useState<any[]>([]);
   const userId = auth.currentUser?.uid;
   const [courseName, setCourseName] = useState('');
-  const [players, setPlayers] = useState<Player[]>([{ name: 'Player 1', scores: Array(18).fill('') }]);
+  const [players, setPlayers] = useState<Player[]>([{
+    name: 'Player 1',
+    scores: Array(18).fill('')
+  }]);
 
   // Load saved scorecard when screen is focused
   useFocusEffect(
@@ -41,22 +46,15 @@ export default function ScorecardScreen() {
   useEffect(() => {
     const saveData = async () => {
       try {
-        const dataToSave = JSON.stringify({ courseName, players });
-        console.log("Saving scorecard:", dataToSave);
-        await AsyncStorage.setItem('savedScorecard', dataToSave);
+        await AsyncStorage.setItem('savedScorecard', JSON.stringify({ courseName, players }));
       } catch (error) {
         console.error('Failed to save scorecard:', error);
       }
     };
 
-    // Listen for navigation away from the screen and save data
     const unsubscribe = navigation.addListener('blur', saveData);
-
-    // Cleanup subscription
     return () => unsubscribe();
   }, [courseName, players, navigation]);
-
-
 
   // Fetch scorecards when loaded
   useEffect(() => {
@@ -98,8 +96,10 @@ export default function ScorecardScreen() {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Clear',
-        onPress: () => setPlayers(players.map((p) => ({ ...p, scores: Array(18).fill('') }))),
-        style: 'destructive'
+        onPress: () => setPlayers(players.map((p) => ({
+          ...p, scores:
+            Array(18).fill('')
+        }))), style: 'destructive'
       }
     ]);
   };
@@ -166,17 +166,19 @@ export default function ScorecardScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
-        {/* Floating Back Button */}
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
 
+      {/* Floating Back Button */}
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Ionicons name="arrow-back" size={30} color="white" />
+      </TouchableOpacity>
 
-      <ScrollView>
+      {/* Scorecard Header */}
+      <View style={styles.header}>
         <Text style={styles.title}>Scorecard</Text>
+      </View>
 
+      <ScrollView style={styles.content}>
         {/* Course Name Input */}
-        <Text style={styles.label}>Course Name:</Text>
         <TextInput
           style={styles.input}
           placeholder="Enter Course Name"
@@ -197,7 +199,9 @@ export default function ScorecardScreen() {
                   setPlayers(updatedPlayers);
                 }}
               />
-              <Button title="Remove" onPress={() => removePlayer(playerIndex)} color="red" />
+              <TouchableOpacity onPress={() => removePlayer(playerIndex)}>
+                <Ionicons name="trash-outline" size={24} color="red" />
+              </TouchableOpacity>
             </View>
 
             {/* Hole Scores */}
@@ -205,7 +209,7 @@ export default function ScorecardScreen() {
               <View style={styles.holeContainer}>
                 {Array.from({ length: 18 }, (_, i) => (
                   <View key={i} style={styles.holeBox}>
-                    <Text style={styles.holeNumber}>Hole {i + 1}</Text>
+                    <Text style={styles.holeNumber}>{i + 1}</Text>
                     <TextInput
                       style={styles.scoreInput}
                       keyboardType="numeric"
@@ -225,28 +229,44 @@ export default function ScorecardScreen() {
         ))}
 
         {/* Scorecard Actions */}
-        <Button title="Add Player" onPress={addPlayer} />
-        <Button title="Clear Scores" onPress={clearScores} color="orange" />
-        <Button title="Save Scorecard" onPress={handleSaveScorecard} />
-        <Button title="Back to Map" onPress={() => navigation.goBack()} />
+        <TouchableOpacity style={styles.button} onPress={addPlayer}>
+          <Text style={styles.buttonText}>Add Player</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={clearScores}>
+          <Text style={styles.buttonText}>Clear Scores</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={handleSaveScorecard}>
+          <Text style={styles.buttonText}>Save Scorecard</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Previous Scorecards */}
-      <Text style={styles.title}>Previous Scorecards</Text>
+      <Text style={styles.previousTitle}>Previous Scorecards</Text>
       {scorecards.length > 0 ? (
         <FlatList
           data={scorecards}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.scorecardRow}>
-              <Text>{item.course} - {item.date}</Text>
-              <Button title="Load" onPress={() => loadScorecard(item)} />
-              <Button title="Delete" onPress={() => handleDeleteScorecard(item.id)} color="red" />
+              {/* Course Info */}
+              <View>
+                <Text style={styles.scorecardText}>{item.course}</Text>
+                <Text style={styles.scorecardDate}>{item.date}</Text>
+              </View>
+              {/* Action Buttons */}
+              <View style={styles.buttonRow}>
+                <TouchableOpacity onPress={() => loadScorecard(item)} style={styles.loadButton}>
+                  <Text style={styles.buttonText}>Load</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDeleteScorecard(item.id)} style={styles.deleteButton}>
+                  <Text style={styles.buttonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         />
       ) : (
-        <Text>No previous scorecards found.</Text>
+        <Text style={styles.noScorecardsText}>No previous scorecards found.</Text>
       )}
     </KeyboardAvoidingView>
   );
@@ -255,27 +275,61 @@ export default function ScorecardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: 30,
-    padding: 20,
-    backgroundColor: '#fff'
+    backgroundColor: "#1E1E1E",
+    paddingTop: 40,
+
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 40,
   },
   title: {
-    marginTop: 30,
     fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 10
+    fontWeight: "bold",
+    color: "#fff",
+    textTransform: "uppercase",
+    textShadowColor: "rgba(0, 0, 0, 0.5)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 5,
   },
-  label: {
-    fontSize: 18,
-    marginTop: 10
+  content: {
+    paddingHorizontal: 20,
   },
   input: {
-    borderWidth: 1,
-    padding: 5,
-    marginBottom: 10
+    backgroundColor: "#2C2C2C",
+    color: "#fff",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    fontSize: 16,
   },
   playerContainer: {
-    marginBottom: 20
+    backgroundColor: "#282828",
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  button: {
+    backgroundColor: "#FF8C00",
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 10,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
   },
   playerHeader: {
     flexDirection: 'row',
@@ -283,46 +337,97 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   holeContainer: {
-    flexDirection: 'row'
+    flexDirection: "row",
+    marginVertical: 5,
   },
   holeBox: {
     marginRight: 10,
-    alignItems: 'center'
+    alignItems: "center",
+    backgroundColor: "#3C3C3C",
+    padding: 8,
+    borderRadius: 5,
   },
   holeNumber: {
-    fontWeight: 'bold'
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#FFD700",
   },
   scoreInput: {
+    backgroundColor: "#444",
+    color: "#fff",
     borderWidth: 1,
-    padding: 10,
+    borderColor: "#FFD700",
+    padding: 8,
     width: 50,
     height: 40,
-    textAlign: 'center'
+    textAlign: "center",
+    borderRadius: 5,
   },
   totalScore: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 5
+    fontWeight: "bold",
+    color: "#FFD700",
+    textAlign: "center",
+    marginTop: 10,
   },
-  scorecardRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10
-  },
-  /** === Back Button === **/
   backButton: {
     position: "absolute",
-    top: 10,
-    left: 10,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-    padding: 5,
+    top: 20,
+    left: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    padding: 10,
     borderRadius: 50,
   },
-  backText: {
-    fontSize: 30,
-    color: "#fff",
+  previousTitle: {
+    fontSize: 24,
     fontWeight: "bold",
-    lineHeight: 30,
+    color: "#FFD700",
+    marginTop: 5,
+    marginBottom: 5,
+    textAlign: "center",
+  },
+  scorecardRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#333",
+    padding: 10,
+    marginVertical: 8,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  scorecardText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "bold",
+  },
+  scorecardDate: {
+    color: "#bbb",
+    fontSize: 10,
+  },
+  noScorecardsText: {
+    color: "#aaa",
+    fontSize: 16,
+    textAlign: "center",
+    marginTop: 10,
+  },
+  buttonRow: {
+    flexDirection: "row",
+  },
+  loadButton: {
+    backgroundColor: "#FF8C00",
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    marginRight: 5,
+  },
+  deleteButton: {
+    backgroundColor: "#C00000",
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 8,
   },
 });
