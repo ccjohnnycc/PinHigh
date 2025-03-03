@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation, useRoute, NavigationProp, RouteProp } from '@react-navigation/native';
 
@@ -100,9 +101,9 @@ export default function TeeSelectionScreen() {
 
             {/* Floating Back Button */}
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                <Text style={styles.backText}>←</Text>
+                <Ionicons name="arrow-back" size={30} color="white" />
             </TouchableOpacity>
-            
+
             <Text style={styles.title}>Select a Tee</Text>
 
             {/* Gender Selection Buttons */}
