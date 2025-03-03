@@ -3,6 +3,7 @@ import {
     View, Text, TextInput, FlatList, Button, StyleSheet,
     Alert, TouchableOpacity
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import {
     DEFAULT_CLUBS, getUserClubs, updateUserClub, getTrackedShots,
     deleteTrackedShot, getScorecards, deleteScorecard
@@ -163,7 +164,7 @@ export default function ProfileScreen() {
 
             {/* Floating Back Button */}
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                <Text style={styles.backText}>←</Text>
+                <Ionicons name="arrow-back" size={30} color="white" />
             </TouchableOpacity>
 
             {/* club Management */}
