@@ -68,7 +68,7 @@ const OPENWEATHER_API_KEY = "b508f10805c3cc6983c16fbae45c51e6";
 const OPENWEATHER_URL = "https://api.openweathermap.org/data/2.5/weather";
 
 // google elevation API kuye and URL
-const GOOGLE_ELEVATION_API_KEY = "AIzaSyCvRJfjHDq3GKfksif-NoclJdvQT4ILjuU"; // Replace with your API key
+const GOOGLE_ELEVATION_API_KEY = "AIzaSyCvRJfjHDq3GKfksif-NoclJdvQT4ILjuU";
 const GOOGLE_ELEVATION_URL = "https://maps.googleapis.com/maps/api/elevation/json";
 
 // converting weather degrees to compass direction
